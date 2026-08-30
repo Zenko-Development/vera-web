@@ -8,7 +8,7 @@ interface AuthContextValue {
   user: User | null;
   isAuth: boolean;
   isLoading: boolean;
-  login: (tokens: { accessToken: string; refreshToken: string }) => Promise<void>;
+  login: (credentials: { username: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
 }
 

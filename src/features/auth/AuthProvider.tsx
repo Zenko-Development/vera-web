@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { AuthContext } from './auth-context';
 import { authApi } from '@/entities/auth/api/auth';
+import { useApiInitialized } from '@/features/api/ApiInitializer';
 import type { User } from '@/entities/auth/model/types';
 import { ScreenLoader } from '@/widgets/ScreenLoader/ScreenLoader';
 
@@ -14,6 +16,9 @@ export const AuthProvider = ({
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isMountedRef = useRef(true);
+  const { isInitialized: isApiInitialized } = useApiInitialized();
+  const pathname = usePathname();
+  const prevPathnameRef = useRef(pathname);
 
   const isAuth = !!user;
 
@@ -25,24 +30,28 @@ export const AuthProvider = ({
   }, []);
 
   const login = useCallback(async ({
-    accessToken,
-    refreshToken,
+    username,
+    password,
   }: {
-    accessToken: string;
-    refreshToken: string;
+    username: string;
+    password: string;
   }) => {
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('refresh_token', refreshToken);
+    console.log('[AuthProvider] Logging in...');
     
-    // Берём user из ответа login
-    const response = await authApi.login({ id: 'testuser', password: 'test' });
+    // Вызываем API с данными пользователя
+    const response = await authApi.login({ username, password });
+    
+    localStorage.setItem('access_token', response.accessToken);
+    localStorage.setItem('refresh_token', response.refreshToken);
     
     if (isMountedRef.current) {
       setUser(response.user);
+      console.log('[AuthProvider] Login successful');
     }
   }, []);
 
   const logout = useCallback(async () => {
+    console.log('[AuthProvider] Logging out...');
     try {
       await authApi.logout();
     } catch (error) {
@@ -53,29 +62,35 @@ export const AuthProvider = ({
         localStorage.removeItem('refresh_token');
         setUser(null);
       }
+      console.log('[AuthProvider] Logout successful');
     }
   }, []);
 
   const checkAuth = useCallback(async () => {
-    const accessToken = localStorage.getItem('access_token');
+    console.log('[AuthProvider] Checking auth state...');
+    const access = localStorage.getItem('access_token');
 
-    if (!accessToken) {
+    if (!access) {
+      console.log('[AuthProvider] No access token found');
       setUser(null);
       return false;
     }
 
-    // Для моков просто создаём тестового пользователя
+    // Для моков создаём тестового пользователя
     if (isMountedRef.current) {
       setUser({
         id: '1',
-        username: 'testuser',
+        username: 'admin',
         role: 'student',
       });
     }
+    console.log('[AuthProvider] Auth state verified successfully');
     return true;
   }, []);
 
   useEffect(() => {
+    if (!isApiInitialized) return;
+    
     const init = async () => {
       setIsLoading(true);
       await checkAuth();
@@ -83,7 +98,7 @@ export const AuthProvider = ({
     };
     
     init();
-  }, [checkAuth]);
+  }, [isApiInitialized, checkAuth]);
 
   const [isMounted, setIsMounted] = useState(false);
   
@@ -91,7 +106,7 @@ export const AuthProvider = ({
     setIsMounted(true);
   }, []);
 
-  if (!isMounted || isLoading) {
+  if (!isMounted || !isApiInitialized || isLoading) {
     return <ScreenLoader />;
   }
 

@@ -12,7 +12,7 @@ export type AuthTokens = {
 };
 
 export type LoginRequest = {
-  id: string; // username
+  username: string; // username
   password: string;
 };
 

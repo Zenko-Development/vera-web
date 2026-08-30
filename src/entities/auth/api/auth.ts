@@ -27,9 +27,8 @@ const VALID_CREDENTIALS = {
 export const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     await new Promise(resolve => setTimeout(resolve, 500));
-    
     // Проверяем логин и пароль
-    if (data.id !== VALID_CREDENTIALS.username || data.password !== VALID_CREDENTIALS.password) {
+    if (data.username !== VALID_CREDENTIALS.username || data.password !== VALID_CREDENTIALS.password) {
       throw new Error("Неверное имя пользователя или пароль");
     }
     
