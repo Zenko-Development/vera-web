@@ -4,8 +4,7 @@ import { Header } from "@/widgets/header/header";
 export default function Settings() {
   return (
     <AuthGuard requireAuth={true} redirectTo="/login" >
-        <Header title="Настройки" />
-        <div className="flex-1 w-full bg-white rounded-xl p-3"></div>
+        <Header title="Формы" />
     </AuthGuard>
   );
 }

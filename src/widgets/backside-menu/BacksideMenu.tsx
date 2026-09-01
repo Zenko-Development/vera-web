@@ -1,3 +1,4 @@
+import { WithTooltip } from "@/components/composite/with-tooltip";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -10,6 +11,10 @@ import {
   LogOut,
   Settings,
   MessageCircleQuestionMark,
+  UsersRound,
+  LayoutDashboard,
+  Hospital,
+  ListTodo,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -17,44 +22,93 @@ export const BacksideMenu = () => {
   return (
     <div className="w-12 h-full bg-black p-1 rounded-full flex flex-col justify-between">
       <div className="flex flex-col gap-4">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Link href="/">
-                <Logo
-                  fill="#ffffff"
-                  className="size-full p-1 transition duration-600 hover:-rotate-180"
-                />
-              </Link>
-            }
-          />
-          <TooltipContent side="right" sideOffset={12}>
-            <p>Главная</p>
-          </TooltipContent>
-        </Tooltip>
+        <WithTooltip
+          children={
+            <Link href="/">
+              <Logo
+                fill="#ffffff"
+                className="size-full p-1 transition duration-600 hover:-rotate-180"
+              />
+            </Link>
+          }
+          tooltipContent={<p>Главная</p>}
+          side="right"
+          sideOffset={12}
+        ></WithTooltip>
 
         <div className="flex flex-col items-center">
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            className="hover:bg-white/20 rounded-full"
-          >
-            <Squircle color="#fff" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            className="hover:bg-white/20 rounded-full"
-          >
-            <Squircle color="#fff" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            className="hover:bg-white/20 rounded-full"
-          >
-            <Squircle color="#fff" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link href="/">
+                  <Button
+                    variant="ghost"
+                    size="icon-lg"
+                    className="hover:bg-white/20 rounded-full"
+                  >
+                    <LayoutDashboard color="#fff" />
+                  </Button>
+                </Link>
+              }
+            />
+            <TooltipContent side="right" sideOffset={12}>
+              <p>Метрики</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link href="/users">
+                  <Button
+                    variant="ghost"
+                    size="icon-lg"
+                    className="hover:bg-white/20 rounded-full"
+                  >
+                    <UsersRound color="#fff" />
+                  </Button>
+                </Link>
+              }
+            />
+            <TooltipContent side="right" sideOffset={12}>
+              <p>Пользователи</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link href="/hospitals">
+                  <Button
+                    variant="ghost"
+                    size="icon-lg"
+                    className="hover:bg-white/20 rounded-full"
+                  >
+                    <Hospital color="#fff" />
+                  </Button>
+                </Link>
+              }
+            />
+            <TooltipContent side="right" sideOffset={12}>
+              <p>Сосудистые центры</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link href="/forms">
+                  <Button
+                    variant="ghost"
+                    size="icon-lg"
+                    className="hover:bg-white/20 rounded-full"
+                  >
+                    <ListTodo color="#fff"/>
+                  </Button>
+                </Link>
+              }
+            />
+            <TooltipContent side="right" sideOffset={12}>
+              <p>Формы</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
       <div className="flex flex-col items-center">
@@ -79,7 +133,7 @@ export const BacksideMenu = () => {
         <Tooltip>
           <TooltipTrigger
             render={
-              <Link href="#">
+              <Link href="/help">
                 <Button
                   variant="ghost"
                   size="icon-lg"

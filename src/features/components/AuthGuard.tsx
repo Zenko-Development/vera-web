@@ -4,37 +4,37 @@ import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '../auth/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
 interface AuthGuardProps {
   children: React.ReactNode;
   requireAuth?: boolean;
   redirectTo?: string;
   fallback?: React.ReactNode;
+  className?: string; // добавили
 }
 
 export function AuthGuard({ 
   children, 
   requireAuth = true, 
   redirectTo = '/',
-  fallback 
+  fallback,
+  className // добавили
 }: AuthGuardProps) {
   const { isAuth, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading) {
-      // Если нужен авторизованный пользователь, но его нет
       if (requireAuth && !isAuth) {
         router.replace(redirectTo);
       }
-      // Если нужен неавторизованный пользователь, но он авторизован
       if (!requireAuth && isAuth) {
         router.replace(redirectTo);
       }
     }
   }, [isAuth, isLoading, requireAuth, redirectTo, router]);
 
-  // Показываем loader пока проверяем авторизацию
   if (isLoading) {
     return fallback ? <>{fallback}</> : (
       <div className="flex items-center justify-center min-h-screen">
@@ -43,12 +43,15 @@ export function AuthGuard({
     );
   }
 
-  // Проверяем условия для показа контента
   const shouldShow = requireAuth ? isAuth : !isAuth;
   
   if (!shouldShow) {
-    return null; // или можно показать 404
+    return null;
   }
 
-  return <>{children}</>;
+  return (
+    <div className={cn("flex flex-col flex-1", className)}>
+      {children}
+    </div>
+  );
 }

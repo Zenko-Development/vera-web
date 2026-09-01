@@ -21,7 +21,7 @@ const mockTokens = {
 // Правильные данные для входа
 const VALID_CREDENTIALS = {
   username: "admin",
-  password: "admin123",
+  password: "admin",
 };
 
 export const authApi = {
