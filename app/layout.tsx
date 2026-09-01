@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils";
 import { AlertProvider } from "@/features/alert/alert-store";
 import { ApiInitializer } from "@/features/api/ApiInitializer";
 import { AuthProvider } from "@/features/auth/AuthProvider";
+import { BacksideMenu } from "@/widgets/BacksideMenu/BacksideMenu";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Вера",
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AlertProvider>
           <ApiInitializer>
             <AuthProvider>
-              {children}
+                {children}
             </AuthProvider>
           </ApiInitializer>
         </AlertProvider>
