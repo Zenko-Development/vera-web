@@ -6,7 +6,7 @@ import { AuthContext } from './auth-context';
 import { authApi } from '@/entities/auth/api/auth';
 import { useApiInitialized } from '@/features/api/ApiInitializer';
 import type { User } from '@/entities/auth/model/types';
-import { ScreenLoader } from '@/widgets/ScreenLoader/ScreenLoader';
+import { ScreenLoader } from '@/widgets/screen-loader/ScreenLoader';
 
 export const AuthProvider = ({
   children,

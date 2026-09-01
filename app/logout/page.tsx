@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/useAuth";
-import { ScreenLoader } from "@/widgets/ScreenLoader/ScreenLoader";
+import { ScreenLoader } from "@/widgets/screen-loader/ScreenLoader";
 
 export default function LogoutPage() {
   const router = useRouter();
