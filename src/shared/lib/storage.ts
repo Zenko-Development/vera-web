@@ -1,5 +1,7 @@
-const ACCESS_KEY = 'accessToken';
-const REFRESH_KEY = 'refreshToken';
+const ACCESS_KEY = 'access_token';
+const REFRESH_KEY = 'refresh_token';
+const USERNAME_KEY = 'auth_username';
+const DEVICE_ID_KEY = 'device_id';
 
 export const tokenStorage = {
   getAccess: () => localStorage.getItem(ACCESS_KEY),
@@ -10,8 +12,22 @@ export const tokenStorage = {
   setRefresh: (token: string) => localStorage.setItem(REFRESH_KEY, token),
   removeRefresh: () => localStorage.removeItem(REFRESH_KEY),
 
+  getUsername: () => localStorage.getItem(USERNAME_KEY),
+  setUsername: (username: string) => localStorage.setItem(USERNAME_KEY, username),
+  removeUsername: () => localStorage.removeItem(USERNAME_KEY),
+
+  getOrCreateDeviceId: () => {
+    const stored = localStorage.getItem(DEVICE_ID_KEY);
+    if (stored) return stored;
+
+    const id = globalThis.crypto?.randomUUID?.() ?? `web-${Date.now()}`;
+    localStorage.setItem(DEVICE_ID_KEY, id);
+    return id;
+  },
+
   clear: () => {
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem(USERNAME_KEY);
   },
 };

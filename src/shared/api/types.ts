@@ -5,6 +5,20 @@ export type ApiErrorCode =
   | 'NOT_FOUND'
   | 'UNKNOWN';
 
+/** UUID values are transported by the backend as strings. */
+export type UUID = string;
+
+/** RFC 3339 timestamp returned by the backend. */
+export type Rfc3339DateTime = string;
+
+/** Standard successful response envelope used by the Vera API. */
+export type ApiResponse<T> = {
+  data: T;
+};
+
+/** Successful operations for which the handler does not write a body. */
+export type EmptyResponse = void;
+
 export interface ApiErrorShape {
   error?: string;
   message?: string;

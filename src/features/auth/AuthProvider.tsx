@@ -1,25 +1,22 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { usePathname } from 'next/navigation';
 import { AuthContext } from './auth-context';
-import { authApi } from '@/entities/auth/api/auth';
+import { sessionController } from '@/entities/auth/controller/session.controller';
 import { useApiInitialized } from '@/features/api/ApiInitializer';
-import type { User } from '@/entities/auth/model/types';
+import type { AuthIdentity } from '@/entities/auth/model/types';
 import { ScreenLoader } from '@/widgets/screen-loader/ScreenLoader';
+import { tokenStorage } from '@/shared/lib/storage';
 
 export const AuthProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthIdentity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isMountedRef = useRef(true);
   const { isInitialized: isApiInitialized } = useApiInitialized();
-  const pathname = usePathname();
-  const prevPathnameRef = useRef(pathname);
-
   const isAuth = !!user;
 
   useEffect(() => {
@@ -36,55 +33,37 @@ export const AuthProvider = ({
     username: string;
     password: string;
   }) => {
-    console.log('[AuthProvider] Logging in...');
-    
-    // Вызываем API с данными пользователя
-    const response = await authApi.login({ username, password });
-    
-    localStorage.setItem('access_token', response.accessToken);
-    localStorage.setItem('refresh_token', response.refreshToken);
+    await sessionController.login({ username, password });
     
     if (isMountedRef.current) {
-      setUser(response.user);
-      console.log('[AuthProvider] Login successful');
+      setUser({ username });
     }
   }, []);
 
   const logout = useCallback(async () => {
-    console.log('[AuthProvider] Logging out...');
     try {
-      await authApi.logout();
+      await sessionController.logout();
     } catch (error) {
       console.error('[AuthProvider] Logout API call failed:', error);
     } finally {
       if (isMountedRef.current) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
         setUser(null);
       }
-      console.log('[AuthProvider] Logout successful');
     }
   }, []);
 
   const checkAuth = useCallback(async () => {
-    console.log('[AuthProvider] Checking auth state...');
-    const access = localStorage.getItem('access_token');
+    const access = tokenStorage.getAccess();
+    const username = tokenStorage.getUsername();
 
     if (!access) {
-      console.log('[AuthProvider] No access token found');
       setUser(null);
       return false;
     }
 
-    // Для моков создаём тестового пользователя
     if (isMountedRef.current) {
-      setUser({
-        id: '1',
-        username: 'admin',
-        role: 'student',
-      });
+      setUser({ username: username ?? "" });
     }
-    console.log('[AuthProvider] Auth state verified successfully');
     return true;
   }, []);
 
@@ -92,21 +71,14 @@ export const AuthProvider = ({
     if (!isApiInitialized) return;
     
     const init = async () => {
-      setIsLoading(true);
       await checkAuth();
-      setIsLoading(false);
+      if (isMountedRef.current) setIsLoading(false);
     };
     
     init();
   }, [isApiInitialized, checkAuth]);
 
-  const [isMounted, setIsMounted] = useState(false);
-  
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted || !isApiInitialized || isLoading) {
+  if (!isApiInitialized || isLoading) {
     return <ScreenLoader />;
   }
 

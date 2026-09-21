@@ -1,53 +1,23 @@
-// entities/auth/api/auth.api.ts
-
+import { api } from "@/shared/api/client";
+import { unwrapData } from "@/shared/api/response";
+import type { ApiResponse, EmptyResponse } from "@/shared/api/types";
 import type {
+  AuthTokens,
   LoginRequest,
-  LoginResponse,
-  RefreshResponse,
-  LogoutResponse,
+  LogoutRequest,
+  RefreshRequest,
 } from "../model/types";
 
-const mockUser = {
-  id: "1",
-  username: "admin",
-  role: "student" as const,
-};
-
-const mockTokens = {
-  accessToken: "mock-access-token",
-  refreshToken: "mock-refresh-token",
-};
-
-// Правильные данные для входа
-const VALID_CREDENTIALS = {
-  username: "admin",
-  password: "admin",
-};
-
 export const authApi = {
-  login: async (data: LoginRequest): Promise<LoginResponse> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // Проверяем логин и пароль
-    if (data.username !== VALID_CREDENTIALS.username || data.password !== VALID_CREDENTIALS.password) {
-      throw new Error("Неверное имя пользователя или пароль");
-    }
-    
-    return {
-      ...mockTokens,
-      user: mockUser,
-    };
+  login(data: LoginRequest): Promise<AuthTokens> {
+    return unwrapData(api().post<ApiResponse<AuthTokens>>("/auth/login", data));
   },
 
-  refresh: async (): Promise<RefreshResponse> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return {
-      ...mockTokens,
-      user: mockUser,
-    };
+  refresh(data: RefreshRequest): Promise<AuthTokens> {
+    return unwrapData(api().post<ApiResponse<AuthTokens>>("/auth/refresh", data));
   },
 
-  logout: async (): Promise<LogoutResponse> => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return {};
+  logout(data: LogoutRequest): Promise<EmptyResponse> {
+    return api().post<EmptyResponse>("/auth/logout", data);
   },
 };

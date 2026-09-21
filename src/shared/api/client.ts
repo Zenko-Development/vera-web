@@ -23,7 +23,7 @@ export type RequestOptions = {
   auth?: boolean;
   retry?: boolean;
   serverContext?: boolean;
-  params?: Record<string, any>; 
+  params?: Record<string, unknown>;
   next?: {
     revalidate?: number | false;
     tags?: string[];
@@ -41,6 +41,7 @@ export type ApiClient = {
   get<T>(path: string, opt?: RequestOptions): Promise<T>;
   post<T>(path: string, body?: unknown, opt?: RequestOptions): Promise<T>;
   put<T>(path: string, body?: unknown, opt?: RequestOptions): Promise<T>;
+  patch<T>(path: string, body?: unknown, opt?: RequestOptions): Promise<T>;
   del<T>(path: string, opt?: RequestOptions): Promise<T>;
 };
 
@@ -64,7 +65,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
   const data = text ? safeJson(text) : undefined;
 
   if (!res.ok) {
-    const errorData = data as any;
+    const errorData =
+      data && typeof data === "object" ? (data as ApiErrorShape) : undefined;
     const message =
       errorData?.error ||
       errorData?.message ||
@@ -105,7 +107,7 @@ async function refreshToken(): Promise<RefreshResult> {
   }
 }
 
-function buildUrl(base: string, path: string, params?: Record<string, any>) {
+function buildUrl(base: string, path: string, params?: Record<string, unknown>) {
   const url = new URL(
     path.startsWith("http")
       ? path
@@ -242,6 +244,21 @@ export function initApiClient(options: ApiClientOptions): void {
         p,
         {
           method: "PUT",
+          body:
+            body instanceof FormData || body === undefined
+              ? body
+              : JSON.stringify(body),
+        },
+        o,
+      ),
+
+    patch: (p, body, o) =>
+      baseRequest(
+        fetchImpl,
+        base,
+        p,
+        {
+          method: "PATCH",
           body:
             body instanceof FormData || body === undefined
               ? body

@@ -2,10 +2,10 @@
 'use client';
 
 import { createContext } from 'react';
-import type { User } from '@/entities/auth/model/types';
+import type { AuthIdentity } from '@/entities/auth/model/types';
 
 interface AuthContextValue {
-  user: User | null;
+  user: AuthIdentity | null;
   isAuth: boolean;
   isLoading: boolean;
   login: (credentials: { username: string; password: string }) => Promise<void>;

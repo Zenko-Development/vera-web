@@ -1,45 +1,20 @@
-// entities/auth/model/types.ts
-
-export type User = {
-  id: string;
-  username: string;
-  role: 'student' | 'parent';
-};
-
 export type AuthTokens = {
-  accessToken: string;
-  refreshToken: string;
+  access_token: string;
+  refresh_token: string;
 };
 
 export type LoginRequest = {
-  username: string; // username
+  user_name: string;
   password: string;
-};
-
-export type LoginResponse = AuthTokens & {
-  user: User;
-};
-
-export type RegisterRequest = {
-  username: string;
-  password: string;
-  role: 'student' | 'parent';
-};
-
-export type RegisterResponse = AuthTokens & {
-  user: User;
+  device_id: string;
 };
 
 export type RefreshRequest = {
-  refreshToken?: string;
+  refresh_token: string;
 };
 
-export type RefreshResponse = AuthTokens & {
-  user: User;
-};
+export type LogoutRequest = RefreshRequest;
 
-export type LogoutRequest = {
-  refreshToken?: string;
+export type AuthIdentity = {
+  username: string;
 };
-
-export type LogoutResponse = Record<string, never>;

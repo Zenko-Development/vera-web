@@ -1,4 +1,3 @@
-import { WithTooltip } from "@/components/composite/with-tooltip";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -22,19 +21,21 @@ export const BacksideMenu = () => {
   return (
     <div className="w-12 h-full bg-black p-1 rounded-full flex flex-col justify-between">
       <div className="flex flex-col gap-4">
-        <WithTooltip
-          children={
-            <Link href="/">
-              <Logo
-                fill="#ffffff"
-                className="size-full p-1 transition duration-600 hover:-rotate-180"
-              />
-            </Link>
-          }
-          tooltipContent={<p>Главная</p>}
-          side="right"
-          sideOffset={12}
-        ></WithTooltip>
+        <Tooltip >
+          <TooltipTrigger 
+            render={
+              <Link href="/">
+                <Logo
+                  fill="#ffffff"
+                  className="size-full p-1 transition duration-600 hover:-rotate-180"
+                />
+              </Link>
+            }
+          />
+          <TooltipContent side="right" sideOffset={12}>
+            <p>Главная</p>
+          </TooltipContent>
+        </Tooltip>
 
         <div className="flex flex-col items-center">
           <Tooltip>
@@ -100,7 +101,7 @@ export const BacksideMenu = () => {
                     size="icon-lg"
                     className="hover:bg-white/20 rounded-full"
                   >
-                    <ListTodo color="#fff"/>
+                    <ListTodo color="#fff" />
                   </Button>
                 </Link>
               }

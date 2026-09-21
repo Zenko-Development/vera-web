@@ -3,16 +3,13 @@
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authApi } from "@/entities/auth/api/auth";
 import { useAlert } from "@/features/alert/alert-store";
 import { useAuth } from "@/features/auth/useAuth";
 import { AuthGuard } from "@/features/components/AuthGuard";
@@ -35,13 +32,13 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await login({
+      await login({
         username: username.trim(),
         password,
       });
 
       router.push("/");
-    } catch (e) {
+    } catch {
       showAlert({
         title: "Ошибка входа",
         type: "error",
