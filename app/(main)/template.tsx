@@ -11,9 +11,9 @@ export default function Template({ children }: { children: React.ReactNode }) {
       <motion.div
         key={pathname}
         className="h-full w-full flex flex-col" 
-        initial={{ opacity: 0, y: 4 }}
+        initial={{ opacity: 0, y: 4}}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 1, y: 0}}
         transition={{ duration: 0.3, ease: [0.75, 0, 0, 1] }}
       >
         {children}

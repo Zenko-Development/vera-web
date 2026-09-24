@@ -14,4 +14,8 @@ export type CreateChecklistResultRequest = {
   message?: string;
 };
 
-export type UpdateChecklistResultRequest = CreateChecklistResultRequest;
+/** PATCH replaces both fields, so callers must send the complete editable DTO. */
+export type UpdateChecklistResultRequest = {
+  title: string;
+  message: string;
+};

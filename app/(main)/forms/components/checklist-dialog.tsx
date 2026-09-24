@@ -19,10 +19,11 @@ type ChecklistDialogProps = {
   sicknesses: Sickness[];
   onCreateSickness: (data: CreateSicknessRequest) => Promise<Sickness>;
   onOpenChange: (open: boolean) => void;
+  onOpenChangeComplete?: (open: boolean) => void;
   onSave: (data: UpdateChecklistRequest) => Promise<Checklist>;
 };
 
-export function ChecklistDialog({ open, form, sicknesses, onCreateSickness, onOpenChange, onSave }: ChecklistDialogProps) {
+export function ChecklistDialog({ open, form, sicknesses, onCreateSickness, onOpenChange, onOpenChangeComplete, onSave }: ChecklistDialogProps) {
   const [name, setName] = useState(form?.name ?? "");
   const [description, setDescription] = useState(form?.description ?? "");
   const [sicknessId, setSicknessId] = useState(form?.sickness_id ?? "");
@@ -74,7 +75,7 @@ export function ChecklistDialog({ open, form, sicknesses, onCreateSickness, onOp
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!saving && !creatingSickness) onOpenChange(next); }}>
+    <Dialog open={open} onOpenChange={(next) => { if (!saving && !creatingSickness) onOpenChange(next); }} onOpenChangeComplete={onOpenChangeComplete}>
       <DialogContent>
         <form onSubmit={submit} className="contents">
           <DialogHeader>

@@ -28,4 +28,13 @@ export type CreateHospitalRequest = {
   longitude?: number;
 };
 
-export type UpdateHospitalRequest = Partial<CreateHospitalRequest>;
+/** PATCH replaces omitted DTO fields with zero values, so updates must be complete. */
+export type UpdateHospitalRequest = {
+  name: string;
+  description: string;
+  address: string;
+  phone: string;
+  facility_type_id: UUID;
+  latitude: number;
+  longitude: number;
+};

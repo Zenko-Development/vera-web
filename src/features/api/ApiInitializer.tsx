@@ -4,7 +4,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { sessionController } from "@/entities/auth/controller/session.controller";
 import { initApiClient, resetApiClient } from "@/shared/api/client";
-import { tokenStorage } from "@/shared/lib/storage";
+import { AUTH_FAILURE_EVENT, tokenStorage } from "@/shared/lib/storage";
 
 const ApiContext = createContext<{ isInitialized: boolean }>({ isInitialized: false });
 
@@ -30,7 +30,10 @@ export function ApiInitializer({ children }: { children: React.ReactNode }) {
             }
           : null;
       },
-      onAuthFailure: tokenStorage.clear,
+      onAuthFailure: () => {
+        tokenStorage.clear();
+        window.dispatchEvent(new Event(AUTH_FAILURE_EVENT));
+      },
     });
 
     setIsInitialized(true);

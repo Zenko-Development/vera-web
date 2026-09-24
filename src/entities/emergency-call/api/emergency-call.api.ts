@@ -1,3 +1,4 @@
+import type { HospitalArrival } from "@/entities/hospital-arrival/model/types";
 import { api } from "@/shared/api/client";
 import { pathSegment, unwrapData } from "@/shared/api/response";
 import type { ApiResponse, UUID } from "@/shared/api/types";
@@ -29,6 +30,15 @@ export const emergencyCallApi = {
   getById(id: UUID): Promise<EmergencyCall> {
     return unwrapData(
       api().get<ApiResponse<EmergencyCall>>(callPath(id), deviceAuth),
+    );
+  },
+
+  getArrivalEstimate(id: UUID): Promise<HospitalArrival> {
+    return unwrapData(
+      api().get<ApiResponse<HospitalArrival>>(
+        `${callPath(id)}/arrival-estimate`,
+        deviceAuth,
+      ),
     );
   },
 

@@ -7,6 +7,10 @@ import type {
   UpdateFacilityTypeRequest,
 } from "../model/types";
 
+const unwrapOptionalData = <T>(
+  request: Promise<ApiResponse<T> | undefined>,
+): Promise<T | undefined> => request.then((response) => response?.data);
+
 export const facilityTypeApi = {
   create(data: CreateFacilityTypeRequest): Promise<FacilityType> {
     return unwrapData(
@@ -15,26 +19,30 @@ export const facilityTypeApi = {
   },
 
   list(): Promise<FacilityType[] | undefined> {
-    return unwrapData(api().get<ApiResponse<FacilityType[]>>("/facility-type/"));
+    return unwrapOptionalData(
+      api().get<ApiResponse<FacilityType[]> | undefined>("/facility-type/"),
+    );
   },
 
   getById(id: UUID): Promise<FacilityType | undefined> {
-    return unwrapData(
-      api().get<ApiResponse<FacilityType>>(`/facility-type/${pathSegment(id)}`),
+    return unwrapOptionalData(
+      api().get<ApiResponse<FacilityType> | undefined>(
+        `/facility-type/${pathSegment(id)}`,
+      ),
     );
   },
 
   getByCode(code: string): Promise<FacilityType | undefined> {
-    return unwrapData(
-      api().get<ApiResponse<FacilityType>>(
+    return unwrapOptionalData(
+      api().get<ApiResponse<FacilityType> | undefined>(
         `/facility-type/code/${pathSegment(code)}`,
       ),
     );
   },
 
   getByName(name: string): Promise<FacilityType | undefined> {
-    return unwrapData(
-      api().get<ApiResponse<FacilityType>>(
+    return unwrapOptionalData(
+      api().get<ApiResponse<FacilityType> | undefined>(
         `/facility-type/name/${pathSegment(name)}`,
       ),
     );
@@ -44,8 +52,8 @@ export const facilityTypeApi = {
     id: UUID,
     data: UpdateFacilityTypeRequest,
   ): Promise<FacilityType | undefined> {
-    return unwrapData(
-      api().patch<ApiResponse<FacilityType>>(
+    return unwrapOptionalData(
+      api().patch<ApiResponse<FacilityType> | undefined>(
         `/facility-type/${pathSegment(id)}`,
         data,
       ),
@@ -53,8 +61,10 @@ export const facilityTypeApi = {
   },
 
   delete(id: UUID): Promise<null | undefined> {
-    return unwrapData(
-      api().del<ApiResponse<null>>(`/facility-type/${pathSegment(id)}`),
+    return unwrapOptionalData(
+      api().del<ApiResponse<null> | undefined>(
+        `/facility-type/${pathSegment(id)}`,
+      ),
     );
   },
 };

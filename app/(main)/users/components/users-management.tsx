@@ -29,6 +29,7 @@ export function UsersManagement() {
     refresh,
     createUser,
     updateAccessStatus,
+    updateRole,
   } = useUsers();
   const [query, setQuery] = useState("");
   const [roleId, setRoleId] = useState("all");
@@ -158,8 +159,9 @@ export function UsersManagement() {
       />
       <UserDetailsDialog
         user={selectedUser}
-        roleName={selectedUser ? roleNames[selectedUser.role_id] : undefined}
+        roles={roles}
         onAccessStatusChange={updateAccessStatus}
+        onRoleChange={updateRole}
         onOpenChange={(open) => {
           if (!open) setSelectedUserId(null);
         }}

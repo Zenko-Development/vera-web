@@ -8,10 +8,16 @@ import type {
   DeviceAccessTokens,
 } from "../model/types";
 
+const publicRequest = { auth: false } as const;
+
 export const deviceAccessApi = {
   login(data: DeviceAccessLoginRequest): Promise<DeviceAccessTokens> {
     return unwrapData(
-      api().post<ApiResponse<DeviceAccessTokens>>("/device-access/login", data),
+      api().post<ApiResponse<DeviceAccessTokens>>(
+        "/device-access/login",
+        data,
+        publicRequest,
+      ),
     );
   },
 
@@ -20,6 +26,7 @@ export const deviceAccessApi = {
       api().post<ApiResponse<DeviceAccessTokens>>(
         "/device-access/refresh",
         data,
+        publicRequest,
       ),
     );
   },

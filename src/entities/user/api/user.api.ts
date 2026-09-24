@@ -4,6 +4,7 @@ import type { ApiResponse, UUID } from "@/shared/api/types";
 import type {
   CreateUserRequest,
   UpdateUserAccessStatusRequest,
+  UpdateUserRoleRequest,
   User,
 } from "../model/types";
 
@@ -32,6 +33,12 @@ export const userApi = {
   ): Promise<User> {
     return unwrapData(
       api().patch<ApiResponse<User>>(`/user/status/${pathSegment(id)}`, data),
+    );
+  },
+
+  updateRole(id: UUID, data: UpdateUserRoleRequest): Promise<User> {
+    return unwrapData(
+      api().patch<ApiResponse<User>>(`/user/${pathSegment(id)}/role`, data),
     );
   },
 };

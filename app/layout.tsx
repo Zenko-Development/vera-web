@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { AlertProvider } from "@/features/alert/alert-store";
 import { ApiInitializer } from "@/features/api/ApiInitializer";
 import { AuthProvider } from "@/features/auth/AuthProvider";
-import { BacksideMenu } from "@/widgets/backside-menu/BacksideMenu";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 

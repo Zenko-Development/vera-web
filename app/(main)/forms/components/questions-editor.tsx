@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -60,7 +60,7 @@ type Props = {
   data: FormVersionData;
   formName: string;
   formDescription: string;
-  onEditMetadata: () => void;
+  onUpdateMetadata: (data: { name: string; description: string }) => Promise<void>;
   onChanged: () => Promise<void>;
 };
 
@@ -79,7 +79,7 @@ export function QuestionsEditor({
   data,
   formName,
   formDescription,
-  onEditMetadata,
+  onUpdateMetadata,
   onChanged,
 }: Props) {
   const showAlert = useAlert();
@@ -105,6 +105,11 @@ export function QuestionsEditor({
   } | null>(null);
   const [optionDropTarget, setOptionDropTarget] = useState<DropTarget>(null);
   const [busy, setBusy] = useState(false);
+  const [metadataEditing, setMetadataEditing] = useState(false);
+  const [metadataName, setMetadataName] = useState(formName);
+  const [metadataDescription, setMetadataDescription] = useState(formDescription);
+  const [metadataError, setMetadataError] = useState<string | null>(null);
+  const [metadataBusy, setMetadataBusy] = useState(false);
 
   const questions = useMemo(() => {
     if (!questionOrder) return data.questions;
@@ -124,6 +129,32 @@ export function QuestionsEditor({
       const option = byId.get(id);
       return option ? [option] : [];
     });
+  };
+
+  const openMetadata = () => {
+    setMetadataName(formName);
+    setMetadataDescription(formDescription);
+    setMetadataError(null);
+    setMetadataEditing(true);
+  };
+
+  const saveMetadata = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!metadataName.trim()) return;
+    setMetadataBusy(true);
+    setMetadataError(null);
+    try {
+      await onUpdateMetadata({
+        name: metadataName.trim(),
+        description: metadataDescription.trim(),
+      });
+      setMetadataEditing(false);
+      showAlert({ title: "Основные данные сохранены", type: "success" });
+    } catch (cause) {
+      setMetadataError(getFormsError(cause));
+    } finally {
+      setMetadataBusy(false);
+    }
   };
 
   const openQuestion = (question: ChecklistQuestion | "new") => {
@@ -390,19 +421,74 @@ export function QuestionsEditor({
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 pb-16">
       <section className="rounded-2xl border bg-background p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-2xl font-semibold tracking-tight">{formName}</h2>
-            { formDescription && <p className="mt-2 text-sm text-muted-foreground">
-              {formDescription || "Описание формы не задано"}
-            </p>}
-          </div>
-          {editable && (
-            <Button type="button" size="sm" variant="ghost" onClick={onEditMetadata}>
+        {metadataEditing ? (
+          <form className="space-y-4" onSubmit={saveMetadata}>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold">Основные данные формы</p>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Закрыть редактирование"
+                onClick={() => setMetadataEditing(false)}
+                disabled={metadataBusy}
+              >
+                <X />
+              </Button>
+            </div>
+            <Field className="gap-2">
+              <FieldLabel htmlFor="form-title-inline">Название</FieldLabel>
+              <Input
+                id="form-title-inline"
+                value={metadataName}
+                onChange={(event) => {
+                  setMetadataName(event.target.value);
+                  setMetadataError(null);
+                }}
+                disabled={metadataBusy}
+                autoFocus
+                required
+              />
+            </Field>
+            <Field className="gap-2">
+              <FieldLabel htmlFor="form-description-inline">Описание</FieldLabel>
+              <Textarea
+                id="form-description-inline"
+                value={metadataDescription}
+                onChange={(event) => setMetadataDescription(event.target.value)}
+                disabled={metadataBusy}
+                rows={3}
+              />
+            </Field>
+            {metadataError && <FieldError>{metadataError}</FieldError>}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setMetadataEditing(false)}
+                disabled={metadataBusy}
+              >
+                Отмена
+              </Button>
+              <Button type="submit" disabled={metadataBusy || !metadataName.trim()}>
+                {metadataBusy ? <LoaderCircle className="animate-spin" /> : <Save />}
+                Сохранить
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="text-2xl font-semibold tracking-tight">{formName}</h2>
+              {formDescription && (
+                <p className="mt-2 text-sm text-muted-foreground">{formDescription}</p>
+              )}
+            </div>
+            <Button type="button" size="sm" variant="ghost" onClick={openMetadata}>
               <Pencil /> Изменить
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </section>
 
       {data.unavailableQuestionCount > 0 && (
@@ -931,11 +1017,7 @@ function QuestionAnswer(props: QuestionAnswerProps) {
           );
         })}
 
-      {isChoice && props.options.length === 0 && (
-        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-          Добавьте варианты ответа — они сразу появятся в форме.
-        </p>
-      )}
+      
 
       {isChoice &&
         props.optionForm?.questionId === props.question.id &&

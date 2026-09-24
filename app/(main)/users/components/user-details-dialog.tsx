@@ -12,7 +12,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import type { Role } from "@/entities/role/model/types";
 import type { User } from "@/entities/user/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { getUsersErrorMessage } from "../hooks/use-users";
@@ -21,22 +31,25 @@ import { AccessBadge } from "./users-grid";
 
 type UserDetailsDialogProps = {
   user: User | null;
-  roleName?: string;
+  roles: Role[];
   onAccessStatusChange: (
     id: User["id"],
     enabled: boolean,
   ) => Promise<User>;
+  onRoleChange: (id: User["id"], roleId: Role["id"]) => Promise<User>;
   onOpenChange: (open: boolean) => void;
 };
 
 export function UserDetailsDialog({
   user,
-  roleName,
+  roles,
   onAccessStatusChange,
+  onRoleChange,
   onOpenChange,
 }: UserDetailsDialogProps) {
   const showAlert = useAlert();
   const [isUpdatingAccess, setIsUpdatingAccess] = useState(false);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   const handleAccessStatusChange = async (enabled: boolean) => {
     if (!user || enabled === user.acces_status || isUpdatingAccess) return;
@@ -60,11 +73,38 @@ export function UserDetailsDialog({
     }
   };
 
+  const handleRoleChange = async (roleId: string | null) => {
+    if (!user || !roleId || roleId === user.role_id || isUpdatingRole) return;
+
+    setIsUpdatingRole(true);
+    try {
+      const updatedUser = await onRoleChange(user.id, roleId);
+      const roleName = roles.find(
+        (role) => role.id === updatedUser.role_id,
+      )?.name;
+      showAlert({
+        title: "Роль изменена",
+        description: `${getUserFullName(updatedUser)}: ${roleName ?? "новая роль назначена"}.`,
+        type: "success",
+      });
+    } catch (error) {
+      showAlert({
+        title: "Не удалось изменить роль",
+        description: getUsersErrorMessage(error),
+        type: "error",
+      });
+    } finally {
+      setIsUpdatingRole(false);
+    }
+  };
+
+  const isUpdating = isUpdatingAccess || isUpdatingRole;
+
   return (
     <Dialog
       open={user !== null}
       onOpenChange={(open) => {
-        if (!open && isUpdatingAccess) return;
+        if (!open && isUpdating) return;
         onOpenChange(open);
       }}
     >
@@ -94,11 +134,39 @@ export function UserDetailsDialog({
               label="Полное имя"
               value={getUserFullName(user)}
             />
-            <DetailsRow
-              icon={<ShieldCheck />}
-              label="Роль"
-              value={roleName ?? "Роль не найдена"}
-            />
+            <div className="flex items-center gap-3 px-4 py-3">
+              <span className="text-muted-foreground [&_svg]:size-4">
+                <ShieldCheck />
+              </span>
+              <span className="flex-1 text-sm text-muted-foreground">Роль</span>
+              <div className="flex items-center gap-2">
+                {isUpdatingRole && (
+                  <LoaderCircle className="size-4 animate-spin text-muted-foreground" />
+                )}
+                <Select
+                  value={user.role_id}
+                  onValueChange={(value) => void handleRoleChange(value)}
+                  disabled={isUpdating || roles.length === 0}
+                >
+                  <SelectTrigger
+                    className="w-48 shadow-none"
+                    aria-label="Роль пользователя"
+                  >
+                    <SelectValue placeholder="Выберите роль" />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectGroup>
+                      <SelectLabel>Доступные роли</SelectLabel>
+                      {roles.map((role) => (
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
@@ -115,7 +183,7 @@ export function UserDetailsDialog({
                   onCheckedChange={(enabled) =>
                     void handleAccessStatusChange(enabled)
                   }
-                  disabled={isUpdatingAccess}
+                  disabled={isUpdating}
                   aria-label={
                     user.acces_status
                       ? "Отключить доступ пользователя"
@@ -132,8 +200,8 @@ export function UserDetailsDialog({
         )}
 
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Изменение профиля, роли и удаление станут доступны после появления
-          соответствующих backend-ручек.
+          Изменение профиля и удаление станут доступны после появления
+          соответствующих backend-ручек. Роль и доступ можно менять здесь.
         </p>
 
         <DialogFooter>
@@ -141,7 +209,7 @@ export function UserDetailsDialog({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isUpdatingAccess}
+            disabled={isUpdating}
           >
             Закрыть
           </Button>

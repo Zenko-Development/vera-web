@@ -94,6 +94,19 @@ export function useUsers() {
     [],
   );
 
+  const updateRole = useCallback(
+    async (id: User["id"], roleId: Role["id"]) => {
+      const updatedUser = await userApi.updateRole(id, { role_id: roleId });
+
+      setUsers((current) =>
+        current.map((user) => (user.id === id ? updatedUser : user)),
+      );
+
+      return updatedUser;
+    },
+    [],
+  );
+
   return {
     users,
     roles,
@@ -102,5 +115,6 @@ export function useUsers() {
     refresh,
     createUser,
     updateAccessStatus,
+    updateRole,
   };
 }

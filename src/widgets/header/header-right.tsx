@@ -16,7 +16,7 @@ export const HeaderRight = () => {
 
   return (
     <div className="flex absolute right-3 top-3">
-      <Tooltip>
+      {/* <Tooltip>
         <TooltipTrigger
           render={
             <Button className="rounded-full bg-white hover:bg-gray-50">
@@ -27,7 +27,7 @@ export const HeaderRight = () => {
         <TooltipContent side="bottom">
           <p>Уведомления</p>
         </TooltipContent>
-      </Tooltip>
+      </Tooltip> */}
       <Tooltip>
         <TooltipTrigger
           render={

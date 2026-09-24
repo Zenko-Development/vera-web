@@ -1,173 +1,126 @@
-import { Button } from "@/components/ui/button";
+"use client";
+
+import type { LucideIcon } from "lucide-react";
+import {
+  Hospital,
+  LayoutDashboard,
+  ListTodo,
+  LogOut,
+  MessageCircleQuestionMark,
+  Settings,
+  UsersRound,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import Logo from "@/shared/assets/icons/logo-icon.svg";
-import {
-  Squircle,
-  LogOut,
-  Settings,
-  MessageCircleQuestionMark,
-  UsersRound,
-  LayoutDashboard,
-  Hospital,
-  ListTodo,
-} from "lucide-react";
-import Link from "next/link";
 
-export const BacksideMenu = () => {
+type MenuItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+const primaryItems: MenuItem[] = [
+  // { href: "/", label: "Метрики", icon: LayoutDashboard },
+  { href: "/users", label: "Пользователи", icon: UsersRound },
+  { href: "/hospitals", label: "Сосудистые центры", icon: Hospital },
+  { href: "/forms", label: "Формы", icon: ListTodo },
+];
+
+const secondaryItems: MenuItem[] = [
+  { href: "/settings", label: "Настройки", icon: Settings },
+  { href: "/help", label: "Помощь", icon: MessageCircleQuestionMark },
+  { href: "/logout", label: "Выйти из аккаунта", icon: LogOut },
+];
+
+function matchesPath(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function MenuLink({ item, active }: { item: MenuItem; active: boolean }) {
+  const Icon = item.icon;
+
   return (
-    <div className="w-12 h-full bg-black p-1 rounded-full flex flex-col justify-between">
-      <div className="flex flex-col gap-4">
-        <Tooltip >
-          <TooltipTrigger 
-            render={
-              <Link href="/">
-                <Logo
-                  fill="#ffffff"
-                  className="size-full p-1 transition duration-600 hover:-rotate-180"
-                />
-              </Link>
-            }
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Link
+            href={item.href}
+            aria-label={item.label}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "relative flex size-10 items-center justify-center rounded-full text-white transition-all outline-none hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/70",
+              active &&
+                "bg-white text-black shadow-sm hover:bg-white hover:text-black",
+            )}
           />
+        }
+      >
+        <Icon className="size-5" />
+      </TooltipTrigger>
+      <TooltipContent side="right" sideOffset={12}>
+        <p>{item.label}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function BacksideMenu() {
+  const pathname = usePathname();
+
+  return (
+    <aside
+      className="flex h-full w-12 shrink-0 flex-col justify-between rounded-full bg-black p-1"
+      aria-label="Основная навигация"
+    >
+      <div className="flex flex-col gap-4">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Link
+                href={primaryItems[0].href}
+                aria-label="Главная"
+                className="flex size-10 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              />
+            }
+          >
+            <Logo
+              fill="currentColor"
+              className="size-full p-1 text-white"
+            />
+          </TooltipTrigger>
           <TooltipContent side="right" sideOffset={12}>
             <p>Главная</p>
           </TooltipContent>
         </Tooltip>
 
-        <div className="flex flex-col items-center">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Link href="/">
-                  <Button
-                    variant="ghost"
-                    size="icon-lg"
-                    className="hover:bg-white/20 rounded-full"
-                  >
-                    <LayoutDashboard color="#fff" />
-                  </Button>
-                </Link>
-              }
+        <nav className="flex flex-col items-center" aria-label="Разделы">
+          {primaryItems.map((item) => (
+            <MenuLink
+              key={item.href}
+              item={item}
+              active={matchesPath(pathname, item.href)}
             />
-            <TooltipContent side="right" sideOffset={12}>
-              <p>Метрики</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Link href="/users">
-                  <Button
-                    variant="ghost"
-                    size="icon-lg"
-                    className="hover:bg-white/20 rounded-full"
-                  >
-                    <UsersRound color="#fff" />
-                  </Button>
-                </Link>
-              }
-            />
-            <TooltipContent side="right" sideOffset={12}>
-              <p>Пользователи</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Link href="/hospitals">
-                  <Button
-                    variant="ghost"
-                    size="icon-lg"
-                    className="hover:bg-white/20 rounded-full"
-                  >
-                    <Hospital color="#fff" />
-                  </Button>
-                </Link>
-              }
-            />
-            <TooltipContent side="right" sideOffset={12}>
-              <p>Сосудистые центры</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Link href="/forms">
-                  <Button
-                    variant="ghost"
-                    size="icon-lg"
-                    className="hover:bg-white/20 rounded-full"
-                  >
-                    <ListTodo color="#fff" />
-                  </Button>
-                </Link>
-              }
-            />
-            <TooltipContent side="right" sideOffset={12}>
-              <p>Формы</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
+          ))}
+        </nav>
       </div>
-      <div className="flex flex-col items-center">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Link href="/settings">
-                <Button
-                  variant="ghost"
-                  size="icon-lg"
-                  className="hover:bg-white/20 rounded-full"
-                >
-                  <Settings color="#fff" />
-                </Button>
-              </Link>
-            }
+
+      <nav className="flex flex-col items-center" aria-label="Дополнительно">
+        {secondaryItems.map((item) => (
+          <MenuLink
+            key={item.href}
+            item={item}
+            active={matchesPath(pathname, item.href)}
           />
-          <TooltipContent side="right" sideOffset={12}>
-            <p>Настройки</p>
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Link href="/help">
-                <Button
-                  variant="ghost"
-                  size="icon-lg"
-                  className="hover:bg-white/20 rounded-full"
-                >
-                  <MessageCircleQuestionMark color="#fff" />
-                </Button>
-              </Link>
-            }
-          />
-          <TooltipContent side="right" sideOffset={12}>
-            <p>Помощь</p>
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Link href="/logout">
-                <Button
-                  variant="ghost"
-                  size="icon-lg"
-                  className="hover:bg-white/20 rounded-full"
-                >
-                  <LogOut color="#fff" />
-                </Button>
-              </Link>
-            }
-          />
-          <TooltipContent side="right" sideOffset={12}>
-            <p>Выйти из аккаунта</p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-    </div>
+        ))}
+      </nav>
+    </aside>
   );
-};
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CircleAlert, CircleCheck, FilePenLine, LoaderCircle, Pencil, Plus, RefreshCw, Send } from "lucide-react";
+import { CircleAlert, CircleCheck, FilePenLine, LoaderCircle, Plus, RefreshCw, Send } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -31,13 +31,22 @@ const statusNames: Record<ChecklistVersion["status"], string> = {
 };
 
 type Props = {
+  open: boolean;
   form: Checklist;
   sicknessName: string;
-  onEditMetadata: () => void;
-  onClose: () => void;
+  onUpdateMetadata: (data: { name: string; description: string }) => Promise<void>;
+  onOpenChange: (open: boolean) => void;
+  onCloseComplete: () => void;
 };
 
-export function FormWorkspace({ form, sicknessName, onEditMetadata, onClose }: Props) {
+export function FormWorkspace({
+  open,
+  form,
+  sicknessName,
+  onUpdateMetadata,
+  onOpenChange,
+  onCloseComplete,
+}: Props) {
   const showAlert = useAlert();
   const [versions, setVersions] = useState<ChecklistVersion[]>([]);
   const [versionId, setVersionId] = useState<string | null>(null);
@@ -172,7 +181,15 @@ export function FormWorkspace({ form, sicknessName, onEditMetadata, onClose }: P
   const busy = versionsLoading || versionAction !== null;
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen || !busy) onOpenChange(nextOpen);
+      }}
+      onOpenChangeComplete={(nextOpen) => {
+        if (!nextOpen) onCloseComplete();
+      }}
+    >
       <DialogContent
         showCloseButton={!busy}
         className="flex h-[calc(100dvh-2rem)] max-h-[960px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100vw-2rem)] xl:max-w-7xl"
@@ -212,15 +229,6 @@ export function FormWorkspace({ form, sicknessName, onEditMetadata, onClose }: P
                     Опубликовать
                   </Button>
                 )}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={onEditMetadata}
-                  disabled={busy}
-                >
-                  <Pencil /> Основные данные
-                </Button>
               </div>
             </div>
           </DialogHeader>
@@ -368,7 +376,7 @@ export function FormWorkspace({ form, sicknessName, onEditMetadata, onClose }: P
                   data={data}
                   formName={form.name}
                   formDescription={form.description}
-                  onEditMetadata={onEditMetadata}
+                  onUpdateMetadata={onUpdateMetadata}
                   onChanged={reloadData}
                 />
               )}

@@ -2,9 +2,9 @@
 
 [К общей документации API](../API_DOCUMENTATION.md)
 
-Маршруты взяты из [`cmd/api/main.go`](../../cmd/api/main.go). Поля запросов и ответов сверены с DTO, ограничения — с миграциями `015`–`018`; статусы, преобразование `NULL` и обработка ошибок — с текущими handler/service/repository. Здесь описаны результаты, правила, условия правил и маршрутизация. HTTP-ручки условий `checklist_rule_condition` и подсчёт правил уже подключены.
+Маршруты взяты из [`cmd/api/main.go`](../../cmd/api/main.go). Поля запросов и ответов сверены с DTO, ограничения — с миграциями `015`–`018` и `029`; статусы, преобразование `NULL` и обработка ошибок — с текущими handler/service/repository. Здесь описаны результаты, требования ресурсов, правила, условия правил и маршрутизация.
 
-Все ID в URL — UUID. Тело запросов передаётся как JSON с `Content-Type: application/json`. Даты в ответах — строки RFC3339. Успешные ответы с телом используют обёртку `data`; ошибки — `message`. Для этих маршрутов в `main.go` не подключена проверка авторизации.
+Все ID в URL — UUID. Тело запросов передаётся как JSON с `Content-Type: application/json`. Даты в ответах — строки RFC3339. Успешные ответы с телом используют обёртку `data`; ошибки — `message`. Все ручки защищены employee JWT; чтение требует `checklist.read`, изменение — `checklist.manage`.
 
 ## Общие формы ответов
 
@@ -208,6 +208,93 @@
 **Response:** `204 No Content`, без тела.
 
 Ошибки: `400` при некорректном UUID; `409` с `{"message":"version not editable"}` для версии не в `draft`; `500` при отсутствии результата или ошибке БД.
+
+## Требования к ресурсам результата
+
+Результат чеклиста может требовать определённое количество доступных типов
+оборудования и/или операционных. Все требования объединяются через **AND**:
+больница подходит, только если для каждого требования у неё достаточно
+физических ресурсов со статусом `available`.
+
+Например, результат с требованиями «2 аппарата ИВЛ» и «1 операционная» исключит
+больницу с одним свободным ИВЛ, даже если её операционная свободна. Если у
+результата нет требований, фильтр ресурсов пропускает любую больницу.
+
+Требования можно создавать, изменять и удалять только в версии со статусом
+`draft`. После публикации они становятся частью неизменяемой медицинской
+логики версии.
+
+### Оборудование
+
+```http
+POST /api/v1/checklist-results/{result_id}/equipment-requirements
+Content-Type: application/json
+
+{
+  "equipment_id": "11111111-1111-4111-8111-111111111111",
+  "required_count": 2
+}
+```
+
+Создаёт требование к типу оборудования. `required_count` — целое число не
+меньше `1`. Нельзя добавить один и тот же `equipment_id` для одного результата
+дважды: вместо этого измените существующую запись.
+
+| Метод и URL | Permission | Результат |
+| --- | --- | --- |
+| `POST /checklist-results/{result_id}/equipment-requirements` | `checklist.manage` | Создать, `201` |
+| `GET /checklist-results/{result_id}/equipment-requirements` | `checklist.read` | Список, `200` |
+| `GET /checklist-result-equipment-requirements/{id}` | `checklist.read` | Одна запись, `200` |
+| `PATCH /checklist-result-equipment-requirements/{id}` | `checklist.manage` | Заменить количество, `200` |
+| `DELETE /checklist-result-equipment-requirements/{id}` | `checklist.manage` | Удалить, `204` |
+
+Тело `PATCH`:
+
+```json
+{ "required_count": 3 }
+```
+
+Ответ записи:
+
+```json
+{
+  "data": {
+    "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "checklist_result_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "equipment_id": "11111111-1111-4111-8111-111111111111",
+    "required_count": 2,
+    "created_at": "2026-09-21T12:00:00Z",
+    "updated_at": "2026-09-21T12:00:00Z"
+  }
+}
+```
+
+### Операционные
+
+Работают полностью аналогично оборудованию, но используют `operating_id`:
+
+```http
+POST /api/v1/checklist-results/{result_id}/operating-requirements
+```
+
+```json
+{
+  "operating_id": "22222222-2222-4222-8222-222222222222",
+  "required_count": 1
+}
+```
+
+| Метод и URL | Permission | Результат |
+| --- | --- | --- |
+| `POST /checklist-results/{result_id}/operating-requirements` | `checklist.manage` | Создать, `201` |
+| `GET /checklist-results/{result_id}/operating-requirements` | `checklist.read` | Список, `200` |
+| `GET /checklist-result-operating-requirements/{id}` | `checklist.read` | Одна запись, `200` |
+| `PATCH /checklist-result-operating-requirements/{id}` | `checklist.manage` | Заменить количество, `200` |
+| `DELETE /checklist-result-operating-requirements/{id}` | `checklist.manage` | Удалить, `204` |
+
+Для обоих видов требований: `400` означает неверный UUID, JSON или количество;
+`404` — отсутствующий результат, requirement или тип ресурса; `409` — дубликат
+или попытка изменить опубликованную/архивную версию.
 
 ## Правила чеклистов
 
@@ -561,7 +648,7 @@
 ## Источники
 
 - Маршруты: [`cmd/api/main.go`](../../cmd/api/main.go).
-- Результаты: [`dto.go`](../../internal/checklist_result/dto.go), [`handler.go`](../../internal/checklist_result/handler.go), [`service.go`](../../internal/checklist_result/service.go), [`sqlc_repository.go`](../../internal/checklist_result/sqlc_repository.go), [`015_checklist_result.up.sql`](../../db/migrations/015_checklist_result.up.sql).
+- Результаты и требования ресурсов: [`dto.go`](../../internal/checklist_result/dto.go), [`handler.go`](../../internal/checklist_result/handler.go), [`service.go`](../../internal/checklist_result/service.go), [`checklist_result_requirement`](../../internal/checklist_result_requirement), [`029_checklist_result_resource_requirements.up.sql`](../../db/migrations/029_checklist_result_resource_requirements.up.sql).
 - Правила: [`dto.go`](../../internal/checklist_rule/dto.go), [`handler.go`](../../internal/checklist_rule/handler.go), [`service.go`](../../internal/checklist_rule/service.go), [`sqlc_repository.go`](../../internal/checklist_rule/sqlc_repository.go), [`016_checklist_rule.up.sql`](../../db/migrations/016_checklist_rule.up.sql), [`018_checklist_rule_condition.up.sql`](../../db/migrations/018_checklist_rule_condition.up.sql).
 - Маршрутизация: [`dto.go`](../../internal/checklist_result_routing/dto.go), [`handler.go`](../../internal/checklist_result_routing/handler.go), [`service.go`](../../internal/checklist_result_routing/service.go), [`sqlc_repository.go`](../../internal/checklist_result_routing/sqlc_repository.go), [`017_checklist_result_routing.up.sql`](../../db/migrations/017_checklist_result_routing.up.sql).
-- Запросы к БД: [`checlist_result.sql`](../../db/query/checlist_result.sql), [`checklist_rule.sql`](../../db/query/checklist_rule.sql), [`checklist_result_routing.sql`](../../db/query/checklist_result_routing.sql).
+- Запросы к БД: [`checlist_result.sql`](../../db/query/checlist_result.sql), [`checklist_result_resource_requirement.sql`](../../db/query/checklist_result_resource_requirement.sql), [`checklist_rule.sql`](../../db/query/checklist_rule.sql), [`checklist_result_routing.sql`](../../db/query/checklist_result_routing.sql).

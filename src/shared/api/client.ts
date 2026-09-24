@@ -20,6 +20,7 @@ export type ApiClientOptions = {
 };
 
 export type RequestOptions = {
+  /** Protected by default. Set to false only for public authentication routes. */
   auth?: boolean;
   retry?: boolean;
   serverContext?: boolean;
@@ -141,8 +142,9 @@ async function baseRequest<T>(
     Object.entries(opt.headers).forEach(([k, v]) => headers.set(k, v));
   }
 
-  // AUTH
-  if (opt.auth) {
+  // All application endpoints are protected by default. Public routes must opt out.
+  const requiresAuth = opt.auth !== false;
+  if (requiresAuth) {
     const token = await getToken();
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
@@ -190,7 +192,7 @@ async function baseRequest<T>(
   }
 
   // 🔁 REFRESH
-  if (res.status === 401 && opt.auth && !opt.retry) {
+  if (res.status === 401 && requiresAuth && !opt.retry) {
     try {
       const refreshed = await refreshToken();
 

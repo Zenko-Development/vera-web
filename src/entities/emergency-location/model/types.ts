@@ -8,6 +8,8 @@ export type EmergencyLocation = {
   accuracy_meters: number;
   captured_at: Rfc3339DateTime;
   received_at: Rfc3339DateTime;
+  is_fresh: boolean;
+  age_seconds: number;
 };
 
 export type CreateEmergencyLocationRequest = Pick<

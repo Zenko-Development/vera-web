@@ -21,3 +21,5 @@ export type CreateUserRequest = {
 };
 
 export type UpdateUserAccessStatusRequest = Pick<User, "acces_status">;
+
+export type UpdateUserRoleRequest = Pick<User, "role_id">;

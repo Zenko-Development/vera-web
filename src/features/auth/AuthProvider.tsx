@@ -6,7 +6,7 @@ import { sessionController } from '@/entities/auth/controller/session.controller
 import { useApiInitialized } from '@/features/api/ApiInitializer';
 import type { AuthIdentity } from '@/entities/auth/model/types';
 import { ScreenLoader } from '@/widgets/screen-loader/ScreenLoader';
-import { tokenStorage } from '@/shared/lib/storage';
+import { AUTH_FAILURE_EVENT, tokenStorage } from '@/shared/lib/storage';
 
 export const AuthProvider = ({
   children,
@@ -21,8 +21,12 @@ export const AuthProvider = ({
 
   useEffect(() => {
     isMountedRef.current = true;
+    const handleAuthFailure = () => setUser(null);
+    window.addEventListener(AUTH_FAILURE_EVENT, handleAuthFailure);
+
     return () => {
       isMountedRef.current = false;
+      window.removeEventListener(AUTH_FAILURE_EVENT, handleAuthFailure);
     };
   }, []);
 

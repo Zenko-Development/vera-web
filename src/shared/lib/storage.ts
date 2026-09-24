@@ -3,6 +3,8 @@ const REFRESH_KEY = 'refresh_token';
 const USERNAME_KEY = 'auth_username';
 const DEVICE_ID_KEY = 'device_id';
 
+export const AUTH_FAILURE_EVENT = 'vera:auth-failure';
+
 export const tokenStorage = {
   getAccess: () => localStorage.getItem(ACCESS_KEY),
   setAccess: (token: string) => localStorage.setItem(ACCESS_KEY, token),
