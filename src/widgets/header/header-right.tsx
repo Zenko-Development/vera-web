@@ -7,7 +7,6 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { Moon, Sun } from "lucide";
-import { Clock } from "lucide-react";
 import { useTheme } from "next-themes";
 import { MorphIcon } from "@/components/ui/morph-icon";
 import {
@@ -18,20 +17,17 @@ import {
 
 export const HeaderRight = () => {
   const { resolvedTheme, setTheme } = useTheme();
-  const [timeString, setTimeString] = useState("--:--");
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const isDark = resolvedTheme === "dark";
+  const timeString = currentTime?.toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }) ?? "--:--";
 
   useEffect(() => {
-    const updateTime = () => {
-      setTimeString(
-        new Date().toLocaleTimeString("ru-RU", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      );
-    };
+    const updateTime = () => setCurrentTime(new Date());
     const initialTimer = window.setTimeout(updateTime, 0);
-    const interval = window.setInterval(updateTime, 30_000);
+    const interval = window.setInterval(updateTime, 1_000);
     return () => {
       window.clearTimeout(initialTimer);
       window.clearInterval(interval);
@@ -106,14 +102,14 @@ export const HeaderRight = () => {
           delay={0}
           render={
             <time
-              dateTime={timeString}
+              dateTime={currentTime?.toISOString()}
               tabIndex={0}
               className="flex h-9 items-center gap-2 rounded-full border bg-popover/90 px-3 text-sm font-medium text-popover-foreground outline-none backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-ring"
             />
           }
         >
           {timeString}
-          <Clock className="size-4" />
+          <LiveClockIcon time={currentTime} />
         </TooltipTrigger>
         <TooltipContent side="bottom">
           <p>Время</p>
@@ -122,3 +118,41 @@ export const HeaderRight = () => {
     </div>
   );
 };
+
+function LiveClockIcon({ time }: { time: Date | null }) {
+  const hours = time?.getHours() ?? 0;
+  const minutes = time?.getMinutes() ?? 0;
+  const seconds = time?.getSeconds() ?? 0;
+  const hourAngle = ((hours % 12) + minutes / 60 + seconds / 3_600) * 30;
+  const minuteAngle = (minutes + seconds / 60) * 6;
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="11" />
+      <line
+        x1="12"
+        y1="12"
+        x2="12"
+        y2="7.5"
+        transform={`rotate(${hourAngle} 12 12)`}
+      />
+      <line
+        x1="12"
+        y1="12"
+        x2="12"
+        y2="5"
+        transform={`rotate(${minuteAngle} 12 12)`}
+      />
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
