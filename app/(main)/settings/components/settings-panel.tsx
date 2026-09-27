@@ -42,6 +42,7 @@ import { roleApi } from "@/entities/role/api/role.api";
 import { getRoleDisplayName } from "@/entities/role/lib/role-presenters";
 import type { Role } from "@/entities/role/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { useUserPreference } from "@/features/preferences/use-user-preference";
 import { ApiError } from "@/shared/api/types";
 import { API_V1 } from "@/shared/config/api";
 import { CatalogsSettings } from "./catalogs-settings";
@@ -49,6 +50,12 @@ import { SettingsSection, SettingsSectionHeader } from "./settings-section";
 
 export type SettingsTab = "general" | "gps" | "catalogs" | "access";
 type RolePermissionMap = Record<string, string[]>;
+
+const isSettingsTab = (value: unknown): value is SettingsTab =>
+  value === "general" ||
+  value === "gps" ||
+  value === "catalogs" ||
+  value === "access";
 
 type AccessSnapshot = {
   roles: Role[];
@@ -94,9 +101,13 @@ function setsAreEqual(left: Set<string>, right: Set<string>): boolean {
   return [...left].every((value) => right.has(value));
 }
 
-export function SettingsPanel({ initialTab = "general" }: { initialTab?: SettingsTab }) {
+export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
   const showAlert = useAlert();
-  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  const [activeTab, setActiveTab] = useUserPreference(
+    "settings:last-tab",
+    initialTab ?? "general",
+    isSettingsTab,
+  );
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [rolePermissions, setRolePermissions] =
@@ -135,6 +146,10 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
     if (!query) return roles;
     return roles.filter((role) => `${role.name} ${getRoleDisplayName(role.name)}`.toLocaleLowerCase("ru-RU").includes(query));
   }, [roleQuery, roles]);
+
+  useEffect(() => {
+    if (initialTab) setActiveTab(initialTab);
+  }, [initialTab, setActiveTab]);
 
   useEffect(() => {
     let isActive = true;
