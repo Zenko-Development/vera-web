@@ -18,8 +18,8 @@ export function SettingsSection({
     >
       <ScrollFade
         className="h-full"
-        fadeClassName="from-background"
-        edgeClassName="bg-background"
+        fadeClassName="from-card dark:from-card"
+        edgeClassName="bg-card dark:bg-card"
       >
         <div className="mx-auto w-full max-w-5xl p-5 md:p-8">{children}</div>
       </ScrollFade>

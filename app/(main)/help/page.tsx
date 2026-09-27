@@ -16,7 +16,7 @@ export default function Help() {
     <AuthGuard requireAuth redirectTo="/login" className="h-full min-h-0">
       <Header title="Помощь" />
       <main className="min-h-0 flex-1 overflow-y-auto pb-6">
-        <section className="rounded-xl bg-background p-5">
+        <section className="rounded-xl bg-card p-5 text-card-foreground">
           <h2 className="text-lg font-semibold">Первичная настройка системы</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Это рекомендуемый порядок запуска. К данным центров и форм можно возвращаться по мере настройки связей между ними.</p>
           <ol className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -45,5 +45,5 @@ export default function Help() {
 }
 
 function HelpCard({ title, text }: { title: string; text: string }) {
-  return <article className="rounded-xl bg-background p-5"><h2 className="font-medium">{title}</h2><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{text}</p></article>;
+  return <article className="rounded-xl bg-card p-5 text-card-foreground"><h2 className="font-medium">{title}</h2><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{text}</p></article>;
 }

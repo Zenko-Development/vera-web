@@ -184,7 +184,7 @@ export function ResultsRulesEditor({ version, data, onChanged }: Props) {
 }
 
 function EntityColumn({ title, description, count, action, children }: { title: string; description: string; count: number; action: React.ReactNode; children: React.ReactNode }) {
-  return <section className="min-w-0 overflow-hidden rounded-xl border bg-background"><header className="flex min-h-16 items-center justify-between gap-3 border-b p-3"><div><h3 className="font-medium">{title} <span className="text-muted-foreground">{count}</span></h3><p className="text-xs text-muted-foreground">{description}</p></div>{action}</header><div className="max-h-[52dvh] overflow-y-auto">{children}</div></section>;
+  return <section className="min-w-0 overflow-hidden rounded-xl border bg-card text-card-foreground"><header className="flex min-h-16 items-center justify-between gap-3 border-b p-3"><div><h3 className="font-medium">{title} <span className="text-muted-foreground">{count}</span></h3><p className="text-xs text-muted-foreground">{description}</p></div>{action}</header><div className="max-h-[52dvh] overflow-y-auto">{children}</div></section>;
 }
 
 function EmptyText({ children }: { children: React.ReactNode }) { return <p className="m-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{children}</p>; }

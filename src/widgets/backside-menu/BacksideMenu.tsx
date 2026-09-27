@@ -104,7 +104,7 @@ export function BacksideMenu() {
 
   return (
     <aside
-      className="flex h-full w-12 shrink-0 flex-col justify-between rounded-full bg-black p-1"
+      className="flex h-full w-12 shrink-0 flex-col justify-between rounded-full bg-backside-background p-1"
       aria-label="Основная навигация"
     >
       <div className="flex min-h-0 flex-col gap-4">

@@ -355,7 +355,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-background ring-1 ring-border md:flex-row">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-card text-card-foreground ring-1 ring-border md:flex-row">
       <div
         className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b p-2 md:min-w-40 md:flex-col md:border-r md:border-b-0"
         role="tablist"
@@ -536,8 +536,8 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
 
           <ScrollFade
             className="min-h-0"
-            fadeClassName="from-background"
-            edgeClassName="bg-background"
+            fadeClassName="from-card dark:from-card"
+            edgeClassName="bg-card dark:bg-card"
           >
             {isRolePermissionsLoading ? (
               <LoadingBlock label="Загружаем права роли" />

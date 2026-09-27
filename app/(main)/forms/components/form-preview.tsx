@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, CircleAlert, LoaderCircle, Send } from "lucide-react";
+import { Check, CircleAlert, LoaderCircle, Send } from "lucide";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { MorphIcon } from "@/components/ui/morph-icon";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,9 +45,9 @@ export function FormPreview({ version, data, publishing, onRequestPublish }: Pro
     </section>
 
     <aside className="space-y-3 xl:sticky xl:top-0 xl:self-start">
-      <Card size="sm"><CardHeader><CardTitle>Готовность к публикации</CardTitle><CardDescription>Проверки контракта Rule Engine</CardDescription></CardHeader><CardContent className="gap-2">{checks.map((check) => <div key={check.label} className="flex items-start gap-2 text-sm">{check.valid ? <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />}<span>{check.label}</span></div>)}</CardContent></Card>
+      <Card size="sm"><CardHeader><CardTitle>Готовность к публикации</CardTitle><CardDescription>Проверки контракта Rule Engine</CardDescription></CardHeader><CardContent className="gap-2">{checks.map((check) => <div key={check.label} className="flex items-start gap-2 text-sm"><MorphIcon icon={check.valid ? Check : CircleAlert} size={16} className={check.valid ? "mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" : "mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"} /><span>{check.label}</span></div>)}</CardContent></Card>
       {data.results.length > 0 && <Card size="sm"><CardHeader><CardTitle>Итоги</CardTitle></CardHeader><CardContent>{data.results.map((result) => <div key={result.id} className="border-b py-2 last:border-0"><p className="font-medium">{result.title}</p><p className="text-xs text-muted-foreground">{result.message || "Без сообщения"}</p></div>)}</CardContent></Card>}
-      {version.status === "draft" ? <Button className="w-full" size="lg" disabled={!ready || publishing} onClick={onRequestPublish}>{publishing ? <LoaderCircle className="animate-spin" /> : <Send />} Опубликовать форму</Button> : <Alert><AlertTitle>{version.status === "published" ? "Форма опубликована" : "Версия находится в архиве"}</AlertTitle><AlertDescription>{version.status === "published" ? "Она доступна приложению бригады." : "Архивную версию нельзя изменять или публиковать повторно."}</AlertDescription></Alert>}
+      {version.status === "draft" ? <Button className="w-full" size="lg" disabled={!ready || publishing} onClick={onRequestPublish}><MorphIcon icon={publishing ? LoaderCircle : Send} className={publishing ? "animate-spin" : undefined} /> Опубликовать форму</Button> : <Alert><AlertTitle>{version.status === "published" ? "Форма опубликована" : "Версия находится в архиве"}</AlertTitle><AlertDescription>{version.status === "published" ? "Она доступна приложению бригады." : "Архивную версию нельзя изменять или публиковать повторно."}</AlertDescription></Alert>}
       {!ready && version.status === "draft" && <p className="text-xs text-muted-foreground">Завершите все обязательные настройки, чтобы опубликовать форму.</p>}
     </aside>
   </div>;

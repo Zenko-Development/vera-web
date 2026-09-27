@@ -121,13 +121,13 @@ export function FleetManagement() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 py-3 pb-6">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl border bg-background px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl border bg-card px-4 py-3 text-card-foreground">
         <SummaryStat value={loading ? null : `${vehicles.filter((item) => item.status === "active").length} / ${vehicles.length}`} label="Активные машины" />
         <SummaryStat value={loading ? null : String(vehicles.filter((item) => item.status === "maintenance").length)} label="На обслуживании" tone="warning" />
         <SummaryStat value={loading ? null : `${devices.filter((item) => item.status === "active").length} / ${devices.length}`} label="Активные планшеты" />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-background p-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 text-card-foreground">
         <Button type="button" size="sm" variant={view === "vehicles" ? "default" : "ghost"} onClick={() => setView("vehicles")}><Ambulance />Машины</Button>
         <Button type="button" size="sm" variant={view === "devices" ? "default" : "ghost"} onClick={() => setView("devices")}><Tablet />Планшеты</Button>
         <Button className="ml-auto" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
@@ -136,7 +136,7 @@ export function FleetManagement() {
       </div>
       {error && <Alert variant="destructive" className="mb-3"><AlertTitle>Не удалось загрузить парк</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {view === "vehicles" ? <section className="overflow-hidden rounded-xl border bg-background">
+        {view === "vehicles" ? <section className="overflow-hidden rounded-xl border bg-card text-card-foreground">
           <header className="flex items-center justify-between gap-3 border-b p-4">
             <div><h2 className="font-semibold">Машины скорой</h2><p className="text-sm text-muted-foreground">Добавьте машину и оставьте статус «Активна», чтобы планшет мог открыть на ней смену.</p></div>
             <Button size="sm" onClick={() => openVehicle("new")}><Plus /> Добавить машину</Button>
@@ -147,7 +147,7 @@ export function FleetManagement() {
           </div>
           {!loading && vehicles.length === 0 && <EmptyFleet icon={Ambulance} title="Машин пока нет" description="Добавьте первую машину, чтобы бригада могла выбрать её при начале смены." action="Добавить машину" onAction={() => openVehicle("new")} />}
         </section>
-        : <section className="overflow-hidden rounded-xl border bg-background">
+        : <section className="overflow-hidden rounded-xl border bg-card text-card-foreground">
           <header className="flex items-center justify-between gap-3 border-b p-4">
             <div><h2 className="font-semibold">Планшеты</h2><p className="text-sm text-muted-foreground">Зарегистрируйте устройство и сразу сохраните одноразовый секрет на планшете.</p></div>
             <Button size="sm" onClick={() => void provision()} disabled={busy}><Plus /> Зарегистрировать планшет</Button>

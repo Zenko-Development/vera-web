@@ -80,7 +80,7 @@ export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto pb-6 pt-3">
-        <section className="rounded-xl border bg-background p-4">
+        <section className="rounded-xl border bg-card p-4 text-card-foreground">
           {hospital.description && <p className="mb-4 text-sm text-muted-foreground">{hospital.description}</p>}
           <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
             <Info icon={MapPin} label="Адрес" value={hospital.address || "Не указан"} />

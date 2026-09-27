@@ -7,10 +7,10 @@ import {
   LoaderCircle,
   Pencil,
   Plus,
-  Save,
   Trash2,
   X,
 } from "lucide-react";
+import { LoaderCircle as LoaderCircleIcon, Save as SaveIcon } from "lucide";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { MorphIcon } from "@/components/ui/morph-icon";
 import {
   Select,
   SelectContent,
@@ -420,7 +421,7 @@ export function QuestionsEditor({
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 pb-16">
-      <section className="rounded-2xl border bg-background p-6 shadow-sm">
+      <section className="rounded-2xl border bg-card p-6 text-card-foreground shadow-sm">
         {metadataEditing ? (
           <form className="space-y-4" onSubmit={saveMetadata}>
             <div className="flex items-center justify-between gap-3">
@@ -471,7 +472,10 @@ export function QuestionsEditor({
                 Отмена
               </Button>
               <Button type="submit" disabled={metadataBusy || !metadataName.trim()}>
-                {metadataBusy ? <LoaderCircle className="animate-spin" /> : <Save />}
+                <MorphIcon
+                  icon={metadataBusy ? LoaderCircleIcon : SaveIcon}
+                  className={metadataBusy ? "animate-spin" : undefined}
+                />
                 Сохранить
               </Button>
             </div>
@@ -503,7 +507,7 @@ export function QuestionsEditor({
       {questions.length === 0 && questionForm !== "new" ? (
         <button
           type="button"
-          className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-background p-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/[0.02]"
+          className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-card p-8 text-center text-card-foreground transition-colors hover:border-primary/50 hover:bg-primary/[0.02]"
           onClick={() => editable && openQuestion("new")}
           disabled={!editable}
         >
@@ -593,10 +597,10 @@ export function QuestionsEditor({
                 <article
                   className={
                     draggingQuestionId === question.id
-                      ? "rounded-2xl border bg-background opacity-40 shadow-sm"
+                      ? "rounded-2xl border bg-card text-card-foreground opacity-40 shadow-sm"
                       : isEditing
-                        ? "rounded-2xl border-2 border-primary bg-background shadow-md"
-                        : "rounded-2xl border bg-background shadow-sm transition-shadow hover:shadow-md"
+                        ? "rounded-2xl border-2 border-primary bg-card text-card-foreground shadow-md"
+                        : "rounded-2xl border bg-card text-card-foreground shadow-sm transition-shadow hover:shadow-md"
                   }
                 >
                   {isEditing ? (
@@ -721,7 +725,7 @@ export function QuestionsEditor({
 
           {questionForm === "new" && (
             <div className="sm:pl-9">
-              <article className="rounded-2xl border-2 border-primary bg-background shadow-md">
+              <article className="rounded-2xl border-2 border-primary bg-card text-card-foreground shadow-md">
                 <QuestionSettings
                   text={questionText}
                   type={questionType}
@@ -743,7 +747,7 @@ export function QuestionsEditor({
       {editable && questions.length > 0 && questionForm !== "new" && (
         <button
           type="button"
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed bg-background px-5 py-6 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/[0.02] hover:text-foreground"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed bg-card px-5 py-6 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/[0.02] hover:text-foreground"
           onClick={() => openQuestion("new")}
           disabled={busy}
         >
@@ -863,7 +867,10 @@ function QuestionSettings(props: QuestionSettingsProps) {
           Отмена
         </Button>
         <Button type="submit" disabled={props.busy || !props.text.trim()}>
-          {props.busy ? <LoaderCircle className="animate-spin" /> : <Save />} Сохранить
+          <MorphIcon
+            icon={props.busy ? LoaderCircleIcon : SaveIcon}
+            className={props.busy ? "animate-spin" : undefined}
+          /> Сохранить
         </Button>
       </div>
     </form>
@@ -1097,7 +1104,10 @@ function OptionForm({
         autoFocus
       />
       <Button type="submit" size="icon-sm" aria-label="Сохранить вариант" disabled={busy || !label.trim()}>
-        {busy ? <LoaderCircle className="animate-spin" /> : <Save />}
+        <MorphIcon
+          icon={busy ? LoaderCircleIcon : SaveIcon}
+          className={busy ? "animate-spin" : undefined}
+        />
       </Button>
       <Button type="button" size="icon-sm" variant="ghost" aria-label="Отмена" onClick={onCancel} disabled={busy}>
         <X />

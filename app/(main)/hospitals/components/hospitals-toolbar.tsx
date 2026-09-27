@@ -56,22 +56,20 @@ export function HospitalsToolbar({
       <ButtonGroup orientation="horizontal" aria-label="Вид списка">
         <Button
           type="button"
-          variant="outline"
+          variant={viewMode === "grid" ? "contrast" : "outline"}
           size="icon-sm"
           aria-label="Карточки"
           aria-pressed={viewMode === "grid"}
-          className="aria-pressed:bg-foreground aria-pressed:text-background"
           onClick={() => onViewModeChange("grid")}
         >
           <Grid2X2 />
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant={viewMode === "table" ? "contrast" : "outline"}
           size="icon-sm"
           aria-label="Таблица"
           aria-pressed={viewMode === "table"}
-          className="aria-pressed:bg-foreground aria-pressed:text-background"
           onClick={() => onViewModeChange("table")}
         >
           <List />

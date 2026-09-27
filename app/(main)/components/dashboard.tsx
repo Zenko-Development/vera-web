@@ -200,7 +200,7 @@ export function Dashboard() {
       </section>
 
       <section
-        className="relative isolate mt-3 h-80 overflow-hidden rounded-xl border bg-background xl:h-96"
+        className="relative isolate mt-3 h-80 overflow-hidden rounded-xl border bg-card text-card-foreground xl:h-96"
         aria-label="Карта сосудистых центров и активных машин"
       >
         <DashboardMap

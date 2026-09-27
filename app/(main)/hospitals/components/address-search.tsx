@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check, LoaderCircle, MapPin, Search } from "lucide-react";
+import { LoaderCircle, Search } from "lucide";
+import { Check, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MorphIcon } from "@/components/ui/morph-icon";
 
 type AddressResult = {
   id: string;
@@ -98,14 +100,17 @@ export function AddressSearch({
           onClick={() => void search()}
           disabled={disabled || loading || value.trim().length < 3}
         >
-          {loading ? <LoaderCircle className="animate-spin" /> : <Search />}
+          <MorphIcon
+            icon={loading ? LoaderCircle : Search}
+            className={loading ? "animate-spin" : undefined}
+          />
           Найти
         </Button>
       </div>
       {error && <FieldError>{error}</FieldError>}
       {searchError && <p className="text-xs text-destructive">{searchError}</p>}
       {results.length > 0 && (
-        <div className="overflow-hidden rounded-xl border bg-background">
+        <div className="overflow-hidden rounded-xl border bg-popover text-popover-foreground">
           {results.map((result) => (
             <button
               key={result.id}
