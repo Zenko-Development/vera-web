@@ -15,6 +15,7 @@ import { useAuth } from "@/features/auth/useAuth";
 import { AuthGuard } from "@/features/components/AuthGuard";
 import Logo from "@/shared/assets/icons/logo.svg";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useState, FormEvent } from "react";
 
 export default function Login() {
@@ -132,9 +133,11 @@ export default function Login() {
             <p className="text-xl w-1/2">
               Войдите, чтобы каждая минута работала на спасение.
             </p>
-            <img
-              src="./tablet.png"
+            <Image
+              src="/tablet.png"
               alt=""
+              width={1859}
+              height={1428}
               className="absolute bottom-0 drop-shadow-lg left-1/2 -translate-x-1/2 transition duration-320 ease-[cubic-bezier(0.75,0,0,1)] hover:rotate-10 hover:scale-105"
             />
           </div>

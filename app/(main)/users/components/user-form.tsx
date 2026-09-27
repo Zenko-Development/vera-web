@@ -173,7 +173,7 @@ export function UserForm({
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <div className="min-h-0 flex-1 space-y-7 overflow-y-auto p-4">
-            <FormSection title="Личные данные">
+            <FormSection number="1" title="Личные данные" description="Как сотрудник будет отображаться в системе">
               <FormField
                 id="lastName"
                 label="Фамилия"
@@ -202,7 +202,7 @@ export function UserForm({
               />
             </FormSection>
 
-            <FormSection title="Учётная запись">
+            <FormSection number="2" title="Учётная запись" description="Данные для входа сотрудника">
               <FormField
                 id="userName"
                 label="Логин"
@@ -237,7 +237,7 @@ export function UserForm({
               />
             </FormSection>
 
-            <FormSection title="Доступ">
+            <FormSection number="3" title="Доступ" description="Что пользователь сможет делать после входа">
               <div className="grid gap-2">
                 <Label htmlFor="role">Роль</Label>
                 <Select
@@ -268,7 +268,7 @@ export function UserForm({
                 )}
                 {roles.length === 0 && (
                   <p className="text-xs">
-                    Сначала создайте роль на странице <Link href="/settings " className="text-blue-400">настроек</Link> .
+                    Сначала создайте роль на странице <Link href="/settings" className="font-medium underline underline-offset-4">настроек</Link>.
                   </p>
                 )}
               </div>
@@ -316,15 +316,22 @@ export function UserForm({
 }
 
 function FormSection({
+  number,
   title,
+  description,
   children,
 }: {
+  number: string;
   title: string;
+  description: string;
   children: React.ReactNode;
 }) {
   return (
     <section className="space-y-4">
-      <h3 className="font-medium">{title}</h3>
+      <div className="flex items-start gap-3">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{number}</span>
+        <div><h3 className="font-medium">{title}</h3><p className="mt-0.5 text-xs text-muted-foreground">{description}</p></div>
+      </div>
       {children}
     </section>
   );
@@ -337,6 +344,7 @@ function FormField({
   error,
   onChange,
   type = "text",
+  required,
   ...props
 }: {
   id: string;
@@ -347,7 +355,7 @@ function FormField({
 } & Omit<React.ComponentProps<"input">, "id" | "value" | "onChange">) {
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>{label}{required && <span className="text-destructive" aria-hidden="true"> *</span>}</Label>
       <Input
         id={id}
         type={type}
@@ -355,6 +363,7 @@ function FormField({
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={Boolean(error)}
         className="shadow-none"
+        required={required}
         {...props}
       />
       {error && <p className="text-xs text-destructive">{error}</p>}

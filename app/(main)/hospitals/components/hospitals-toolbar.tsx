@@ -27,8 +27,8 @@ type Props = {
   facilityTypeId: string;
   sort: HospitalsSort;
   viewMode: HospitalsViewMode;
-  facilityTypes: FacilityType[];
   isLoading: boolean;
+  facilityTypes: FacilityType[];
   onQueryChange: (value: string) => void;
   onFacilityTypeChange: (value: string) => void;
   onSortChange: (value: HospitalsSort) => void;
@@ -42,8 +42,8 @@ export function HospitalsToolbar({
   facilityTypeId,
   sort,
   viewMode,
-  facilityTypes,
   isLoading,
+  facilityTypes,
   onQueryChange,
   onFacilityTypeChange,
   onSortChange,
@@ -52,8 +52,32 @@ export function HospitalsToolbar({
   onCreate,
 }: Props) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-3 ring-1 ring-black/5">
-      <InputGroup className="min-w-64 flex-1 shadow-none">
+    <div className="flex flex-wrap items-center gap-1">
+      <ButtonGroup orientation="horizontal" aria-label="Вид списка">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          aria-label="Карточки"
+          aria-pressed={viewMode === "grid"}
+          className="aria-pressed:bg-black aria-pressed:text-primary-foreground"
+          onClick={() => onViewModeChange("grid")}
+        >
+          <Grid2X2 />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          aria-label="Таблица"
+          aria-pressed={viewMode === "table"}
+          className="aria-pressed:bg-black aria-pressed:text-primary-foreground"
+          onClick={() => onViewModeChange("table")}
+        >
+          <List />
+        </Button>
+      </ButtonGroup>
+      <InputGroup className="min-w-64 flex-1 shadow-none bg-white h-8">
         <InputGroupAddon>
           <Search />
         </InputGroupAddon>
@@ -65,24 +89,9 @@ export function HospitalsToolbar({
         />
       </InputGroup>
 
-      <Select
-        value={facilityTypeId}
-        onValueChange={(value) => onFacilityTypeChange(value ?? "all")}
-      >
-        <SelectTrigger className="w-52 bg-white shadow-none" size="sm">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent align="start">
-          <SelectGroup>
-            <SelectLabel>Тип учреждения</SelectLabel>
-            <SelectItem value="all">Все типы</SelectItem>
-            {facilityTypes.map((type) => (
-              <SelectItem key={type.id} value={type.id}>
-                {type.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
+      <Select value={facilityTypeId} onValueChange={(value) => onFacilityTypeChange(value ?? "all")}>
+        <SelectTrigger className="w-52 bg-white shadow-none" size="sm" aria-label="Фильтр по типу учреждения"><SelectValue /></SelectTrigger>
+        <SelectContent align="start"><SelectGroup><SelectLabel>Тип учреждения</SelectLabel><SelectItem value="all">Все типы</SelectItem>{facilityTypes.map((type) => <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>)}</SelectGroup></SelectContent>
       </Select>
 
       <Select
@@ -104,30 +113,7 @@ export function HospitalsToolbar({
         </SelectContent>
       </Select>
 
-      <ButtonGroup orientation="horizontal" aria-label="Вид списка">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          aria-label="Карточки"
-          aria-pressed={viewMode === "grid"}
-          className="aria-pressed:bg-black aria-pressed:text-white"
-          onClick={() => onViewModeChange("grid")}
-        >
-          <Grid2X2 />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          aria-label="Таблица"
-          aria-pressed={viewMode === "table"}
-          className="aria-pressed:bg-black aria-pressed:text-white"
-          onClick={() => onViewModeChange("table")}
-        >
-          <List />
-        </Button>
-      </ButtonGroup>
+      
 
       <Button
         type="button"
@@ -141,7 +127,7 @@ export function HospitalsToolbar({
       </Button>
 
       <Button type="button" size="sm" onClick={onCreate}>
-        <Plus /> Создать
+        <Plus /> Новый центр
       </Button>
     </div>
   );

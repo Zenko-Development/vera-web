@@ -57,8 +57,32 @@ export function UsersToolbar({
   onCreate,
 }: UsersToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-3 ring-1 ring-black/5">
-      <InputGroup className="min-w-56 flex-1 shadow-none">
+    <div className="flex flex-wrap items-center gap-1">
+      <ButtonGroup orientation="horizontal" aria-label="Вид списка">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          aria-label="Карточки"
+          aria-pressed={viewMode === "grid"}
+          className="aria-pressed:bg-black aria-pressed:text-primary-foreground"
+          onClick={() => onViewModeChange("grid")}
+        >
+          <Grid2X2 />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          aria-label="Таблица"
+          aria-pressed={viewMode === "table"}
+          className="aria-pressed:bg-black aria-pressed:text-primary-foreground"
+          onClick={() => onViewModeChange("table")}
+        >
+          <List />
+        </Button>
+      </ButtonGroup>
+      <InputGroup className="min-w-56 flex-1 shadow-none bg-white h-8">
         <InputGroupAddon>
           <Search />
         </InputGroupAddon>
@@ -128,30 +152,7 @@ export function UsersToolbar({
         </SelectContent>
       </Select>
 
-      <ButtonGroup orientation="horizontal" aria-label="Вид списка">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          aria-label="Карточки"
-          aria-pressed={viewMode === "grid"}
-          className="aria-pressed:bg-black aria-pressed:text-white"
-          onClick={() => onViewModeChange("grid")}
-        >
-          <Grid2X2 />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          aria-label="Таблица"
-          aria-pressed={viewMode === "table"}
-          className="aria-pressed:bg-black aria-pressed:text-white"
-          onClick={() => onViewModeChange("table")}
-        >
-          <List />
-        </Button>
-      </ButtonGroup>
+      
 
       <Button
         type="button"
@@ -165,7 +166,7 @@ export function UsersToolbar({
       </Button>
 
       <Button type="button" size="sm" onClick={onCreate}>
-        <Plus /> Создать
+        <Plus /> Новый пользователь
       </Button>
     </div>
   );

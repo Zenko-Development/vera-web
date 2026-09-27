@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AlertCircle, Plus, SearchX, UsersRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 import type { User } from "@/entities/user/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { getUserFullName, getUserSearchValue } from "../lib/user-presenters";
@@ -100,7 +101,7 @@ export function UsersManagement() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 pt-3">
+    <div className="flex min-h-0 flex-1 flex-col">
 
       <UsersToolbar
         query={query}
@@ -127,7 +128,10 @@ export function UsersManagement() {
         </Alert>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto py-1 pb-5">
+      <ScrollFade
+        className="min-h-0 flex-1"
+        viewportClassName="py-1 pb-5"
+      >
         {isLoading ? (
           <UsersLoading viewMode={viewMode} />
         ) : visibleUsers.length === 0 ? (
@@ -149,7 +153,7 @@ export function UsersManagement() {
             onUserOpen={(user) => setSelectedUserId(user.id)}
           />
         )}
-      </div>
+      </ScrollFade>
 
       <UserForm
         open={isCreateOpen}

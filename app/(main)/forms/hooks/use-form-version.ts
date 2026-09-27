@@ -7,6 +7,10 @@ import { checklistQuestionApi } from "@/entities/checklist-question/api/checklis
 import type { ChecklistQuestion } from "@/entities/checklist-question/model/types";
 import { checklistResultApi } from "@/entities/checklist-result/api/checklist-result.api";
 import type { ChecklistResult } from "@/entities/checklist-result/model/types";
+import { checklistResultEquipmentRequirementApi } from "@/entities/checklist-result-equipment-requirement/api/checklist-result-equipment-requirement.api";
+import type { ChecklistResultEquipmentRequirement } from "@/entities/checklist-result-equipment-requirement/model/types";
+import { checklistResultOperatingRequirementApi } from "@/entities/checklist-result-operating-requirement/api/checklist-result-operating-requirement.api";
+import type { ChecklistResultOperatingRequirement } from "@/entities/checklist-result-operating-requirement/model/types";
 import { checklistResultRoutingApi } from "@/entities/checklist-result-routing/api/checklist-result-routing.api";
 import type { ChecklistResultRouting } from "@/entities/checklist-result-routing/model/types";
 import { checklistRuleApi } from "@/entities/checklist-rule/api/checklist-rule.api";
@@ -17,6 +21,10 @@ import { facilityTypeApi } from "@/entities/facility-type/api/facility-type.api"
 import type { FacilityType } from "@/entities/facility-type/model/types";
 import { hospitalApi } from "@/entities/hospital/api/hospital.api";
 import type { Hospital } from "@/entities/hospital/model/types";
+import { equipmentApi } from "@/entities/equipment/api/equipment.api";
+import type { Equipment } from "@/entities/equipment/model/types";
+import { operatingTypeApi } from "@/entities/operating-type/api/operating-type.api";
+import type { OperatingType } from "@/entities/operating-type/model/types";
 import {
   readKnownQuestionIds,
   rememberQuestionId,
@@ -30,6 +38,10 @@ export type FormVersionData = {
   rules: ChecklistRule[];
   conditionsByRule: Record<string, ChecklistRuleCondition[]>;
   routingByResult: Record<string, ChecklistResultRouting>;
+  equipmentRequirementsByResult: Record<string, ChecklistResultEquipmentRequirement[]>;
+  operatingRequirementsByResult: Record<string, ChecklistResultOperatingRequirement[]>;
+  equipmentTypes: Equipment[];
+  operatingTypes: OperatingType[];
   hospitals: Hospital[];
   facilityTypes: FacilityType[];
   unavailableQuestionCount: number;
@@ -42,18 +54,31 @@ const emptyData: FormVersionData = {
   rules: [],
   conditionsByRule: {},
   routingByResult: {},
+  equipmentRequirementsByResult: {},
+  operatingRequirementsByResult: {},
+  equipmentTypes: [],
+  operatingTypes: [],
   hospitals: [],
   facilityTypes: [],
   unavailableQuestionCount: 0,
 };
 
 async function loadVersionData(versionId: string): Promise<FormVersionData> {
-  const [results, rules, hospitals, facilityTypes] = await Promise.all([
+  const [results, rules, hospitals, facilityTypes, equipmentTypes, operatingTypes] = await Promise.all([
     checklistResultApi.list(versionId),
     checklistRuleApi.list(versionId),
     hospitalApi.list(),
     facilityTypeApi.list(),
+    equipmentApi.list(),
+    operatingTypeApi.list(),
   ]);
+
+  const [equipmentRequirementLists, operatingRequirementLists] = await Promise.all([
+    Promise.all(results.map((result) => checklistResultEquipmentRequirementApi.list(result.id))),
+    Promise.all(results.map((result) => checklistResultOperatingRequirementApi.list(result.id))),
+  ]);
+  const equipmentRequirementsByResult = Object.fromEntries(results.map((result, index) => [result.id, equipmentRequirementLists[index]]));
+  const operatingRequirementsByResult = Object.fromEntries(results.map((result, index) => [result.id, operatingRequirementLists[index]]));
 
   const conditionLists = await Promise.all(
     rules.map((rule) => checklistRuleConditionApi.list(rule.id)),
@@ -115,6 +140,10 @@ async function loadVersionData(versionId: string): Promise<FormVersionData> {
     rules,
     conditionsByRule,
     routingByResult,
+    equipmentRequirementsByResult,
+    operatingRequirementsByResult,
+    equipmentTypes,
+    operatingTypes,
     hospitals,
     facilityTypes: facilityTypes ?? [],
     unavailableQuestionCount: questionResponses.filter(

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LoaderCircle, X } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -34,6 +35,7 @@ import type {
 import type { Sickness } from "@/entities/sickness/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { getHospitalsErrorMessage } from "../hooks/use-hospitals";
+import { AddressSearch } from "./address-search";
 
 type FormState = {
   name: string;
@@ -288,7 +290,7 @@ function HospitalFormFields({
 
         <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 space-y-7 overflow-y-auto p-4">
-            <FormSection title="Основные данные">
+            <FormSection number="1" title="Основные данные" description="Название и тип учреждения">
               <FormInput
                 id="hospital-name"
                 label="Название"
@@ -338,21 +340,23 @@ function HospitalFormFields({
                 {errors.facilityTypeId && <FieldError>{errors.facilityTypeId}</FieldError>}
                 {facilityTypes.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Для создания центра в системе должен существовать хотя бы один тип учреждения.
+                    Сначала добавьте тип учреждения в разделе <Link href="/settings?section=catalogs" className="underline underline-offset-4">Настройки → Справочники</Link>.
                   </p>
                 )}
               </div>
             </FormSection>
 
-            <FormSection title="Контакты и местоположение">
-              <FormInput
-                id="hospital-address"
-                label="Адрес"
+            <FormSection number="2" title="Контакты и местоположение" description="Адрес для бригады и координаты для маршрутизации">
+              <AddressSearch
                 value={form.address}
                 error={errors.address}
                 onChange={(value) => setField("address", value)}
+                onSelect={(result) => {
+                  setField("address", result.label);
+                  setField("latitude", String(result.latitude));
+                  setField("longitude", String(result.longitude));
+                }}
                 disabled={disabled}
-                required
               />
               <FormInput
                 id="hospital-phone"
@@ -392,9 +396,10 @@ function HospitalFormFields({
                   placeholder="37.6173"
                 />
               </div>
+              <p className="text-xs text-muted-foreground">Координаты необязательны, но нужны для расчёта расстояния и ETA. Если указываете одну координату, укажите и вторую.</p>
             </FormSection>
 
-            <FormSection title="Принимаемые направления">
+            <FormSection number="3" title="Принимаемые направления" description="По каким заболеваниям центр доступен для выбора">
               <p className="-mt-2 text-sm text-muted-foreground">
                 Выберите заболевания, по которым бригада может направить пациента в этот центр.
               </p>
@@ -404,7 +409,7 @@ function HospitalFormFields({
                 </div>
               ) : sicknesses.length === 0 ? (
                 <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                  Заболевания пока не созданы. Их можно добавить на странице управления формами.
+                  Заболевания пока не созданы. Добавьте их в разделе «Настройки → Справочники».
                 </div>
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -460,10 +465,13 @@ function HospitalFormFields({
   );
 }
 
-function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+function FormSection({ number, title, description, children }: { number: string; title: string; description: string; children: React.ReactNode }) {
   return (
     <section className="space-y-4">
-      <h3 className="font-medium">{title}</h3>
+      <div className="flex items-start gap-3">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{number}</span>
+        <div><h3 className="font-medium">{title}</h3><p className="mt-0.5 text-xs text-muted-foreground">{description}</p></div>
+      </div>
       {children}
     </section>
   );
@@ -475,6 +483,7 @@ function FormInput({
   value,
   error,
   onChange,
+  required,
   ...props
 }: {
   id: string;
@@ -485,13 +494,14 @@ function FormInput({
 } & Omit<React.ComponentProps<"input">, "id" | "value" | "onChange">) {
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>{label}{required && <span className="text-destructive" aria-hidden="true"> *</span>}</Label>
       <Input
         id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={Boolean(error)}
         className="shadow-none"
+        required={required}
         {...props}
       />
       {error && <FieldError>{error}</FieldError>}

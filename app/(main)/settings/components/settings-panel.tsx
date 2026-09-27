@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ChevronRight,
   KeyRound,
+  Library,
   LoaderCircle,
   Plus,
   RefreshCw,
+  Satellite,
   Settings2,
   ShieldCheck,
 } from "lucide-react";
@@ -22,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 import {
   Table,
   TableBody,
@@ -29,6 +32,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { geoTrackingPolicyApi } from "@/entities/geo-tracking-policy/api/geo-tracking-policy.api";
+import type { GeoTrackingPolicy } from "@/entities/geo-tracking-policy/model/types";
 import { permissionApi } from "@/entities/permission/api/permission.api";
 import type { Permission } from "@/entities/permission/model/types";
 import { rolePermissionApi } from "@/entities/role-permission/api/role-permission.api";
@@ -37,8 +42,10 @@ import type { Role } from "@/entities/role/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { ApiError } from "@/shared/api/types";
 import { API_V1 } from "@/shared/config/api";
+import { CatalogsSettings } from "./catalogs-settings";
+import { SettingsSection, SettingsSectionHeader } from "./settings-section";
 
-type SettingsTab = "general" | "access";
+export type SettingsTab = "general" | "gps" | "catalogs" | "access";
 type RolePermissionMap = Record<string, string[]>;
 
 type AccessSnapshot = {
@@ -85,9 +92,9 @@ function setsAreEqual(left: Set<string>, right: Set<string>): boolean {
   return [...left].every((value) => right.has(value));
 }
 
-export function SettingsPanel() {
+export function SettingsPanel({ initialTab = "general" }: { initialTab?: SettingsTab }) {
   const showAlert = useAlert();
-  const [activeTab, setActiveTab] = useState<SettingsTab>("access");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [rolePermissions, setRolePermissions] =
@@ -109,6 +116,7 @@ export function SettingsPanel() {
 
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [roleName, setRoleName] = useState("");
+  const [roleQuery, setRoleQuery] = useState("");
   const [isRoleSaving, setIsRoleSaving] = useState(false);
 
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
@@ -120,6 +128,11 @@ export function SettingsPanel() {
     () => !setsAreEqual(initialPermissionIds, draftPermissionIds),
     [initialPermissionIds, draftPermissionIds],
   );
+  const visibleRoles = useMemo(() => {
+    const query = roleQuery.trim().toLocaleLowerCase("ru-RU");
+    if (!query) return roles;
+    return roles.filter((role) => role.name.toLocaleLowerCase("ru-RU").includes(query));
+  }, [roleQuery, roles]);
 
   useEffect(() => {
     let isActive = true;
@@ -342,9 +355,9 @@ export function SettingsPanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-row overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-white ring-1 ring-black/5 md:flex-row">
       <div
-        className="flex flex-col gap-1 border-r p-2 min-w-40"
+        className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b p-2 md:min-w-40 md:flex-col md:border-r md:border-b-0"
         role="tablist"
         aria-label="Разделы настроек"
       >
@@ -353,7 +366,7 @@ export function SettingsPanel() {
           role="tab"
           aria-selected={activeTab === "general"}
           onClick={() => setActiveTab("general")}
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 aria-selected:bg-black aria-selected:text-white"
+          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
           <Settings2 className="size-4" />
           Общее
@@ -361,122 +374,149 @@ export function SettingsPanel() {
         <button
           type="button"
           role="tab"
+          aria-selected={activeTab === "gps"}
+          onClick={() => setActiveTab("gps")}
+          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 aria-selected:bg-primary aria-selected:text-primary-foreground"
+        >
+          <Satellite className="size-4" />
+          GPS и ETA
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "catalogs"}
+          onClick={() => setActiveTab("catalogs")}
+          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 aria-selected:bg-primary aria-selected:text-primary-foreground"
+        >
+          <Library className="size-4" />
+          Справочники
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={activeTab === "access"}
           onClick={() => setActiveTab("access")}
-          className="flex items-center gap-2  rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 aria-selected:bg-black aria-selected:text-white"
+          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
-          <ShieldCheck className="size-4 " />
+          <ShieldCheck className="size-4" />
           Роли и доступ
         </button>
       </div>
 
       {activeTab === "general" ? (
         <GeneralSettings />
+      ) : activeTab === "gps" ? (
+        <GpsSettings />
+      ) : activeTab === "catalogs" ? (
+        <CatalogsSettings />
       ) : (
-        <section
-          role="tabpanel"
-          aria-label="Роли и доступ"
-          className="min-h-0 flex-1 overflow-y-auto"
-        >
-          <div className=" w-full max-w-5xl p-5 md:p-8">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="max-w-2xl">
-                <h2 className="text-xl font-semibold">Управление ролями</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Роли определяют, какие разделы и действия доступны
-                  пользователю. Откройте роль, чтобы изменить набор её прав.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 w-full">
-                <Input className="w-full h-8"/>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  disabled={isLoading}
-                >
-                  <RefreshCw className={isLoading ? "animate-spin" : ""} />
-                  Обновить
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsPermissionDialogOpen(true)}
-                >
-                  <KeyRound /> Новое право
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setIsRoleDialogOpen(true)}
-                >
-                  <Plus /> Новая роль
-                </Button>
-              </div>
-            </div>
-
-            {loadError && !isLoading && (
-              <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                <span>Не удалось загрузить роли: {loadError}</span>
-                <Button variant="outline" size="sm" onClick={handleRefresh}>
-                  Повторить
-                </Button>
-              </div>
-            )}
-
-            <div className="mt-6 overflow-hidden rounded-xl border">
-              {isLoading ? (
-                <LoadingBlock label="Загружаем роли" />
-              ) : roles.length === 0 ? (
-                <EmptyRoles onCreate={() => setIsRoleDialogOpen(true)} />
-              ) : (
-                <Table>
-                  <TableBody>
-                    {roles.map((role) => {
-                      const permissionCount =
-                        rolePermissions[role.id]?.length ?? 0;
-
-                      return (
-                        <TableRow key={role.id} className="group">
-                          <TableCell className="p-0">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenRole(role)}
-                              className="flex w-full items-center gap-4 px-4 py-4 text-left outline-none transition focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                            >
-                              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-gray-50 text-muted-foreground transition group-hover:text-foreground">
-                                <ShieldCheck className="size-4" />
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block font-semibold">
-                                  {role.name}
-                                </span>
-                                <span className="mt-1 block truncate text-sm text-muted-foreground">
-                                  Настройка доступа для пользователей этой роли
-                                </span>
-                              </span>
-                              <span className="hidden rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-muted-foreground sm:inline-flex">
-                                {permissionCount} {permissionCount === 1 ? "право" : "прав"}
-                              </span>
-                              <ChevronRight className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-                            </button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-
-            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              Изменение названия и удаление ролей появятся после добавления
-              соответствующих ручек на backend.
-            </p>
+        <SettingsSection ariaLabel="Роли и доступ">
+          <SettingsSectionHeader
+            title="Управление ролями"
+            description="Роли определяют, какие разделы и действия доступны пользователю. Откройте роль, чтобы изменить набор её прав."
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isLoading}
+              >
+                <RefreshCw className={isLoading ? "animate-spin" : ""} />
+                Обновить
+              </Button>
+            }
+          />
+          <div className="mt-5 flex w-full items-center gap-2">
+            <Input
+              className="h-8 w-full"
+              value={roleQuery}
+              onChange={(event) => setRoleQuery(event.target.value)}
+              placeholder="Найти роль"
+              aria-label="Поиск ролей"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPermissionDialogOpen(true)}
+            >
+              <KeyRound /> Новое право
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setIsRoleDialogOpen(true)}
+            >
+              <Plus /> Новая роль
+            </Button>
           </div>
-        </section>
+
+          {loadError && !isLoading && (
+            <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <span>Не удалось загрузить роли: {loadError}</span>
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
+                Повторить
+              </Button>
+            </div>
+          )}
+
+          <div className="mt-6 overflow-hidden rounded-xl border">
+            {isLoading ? (
+              <LoadingBlock label="Загружаем роли" />
+            ) : roles.length === 0 ? (
+              <EmptyRoles onCreate={() => setIsRoleDialogOpen(true)} />
+            ) : (
+              <Table>
+                <TableBody>
+                  {visibleRoles.length === 0 ? (
+                    <TableRow>
+                      <TableCell className="py-10 text-center text-sm text-muted-foreground">
+                        Роли по запросу не найдены
+                      </TableCell>
+                    </TableRow>
+                  ) : visibleRoles.map((role) => {
+                    const permissionCount =
+                      rolePermissions[role.id]?.length ?? 0;
+
+                    return (
+                      <TableRow key={role.id} className="group">
+                        <TableCell className="p-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenRole(role)}
+                            className="flex w-full items-center gap-4 px-4 py-4 text-left outline-none transition focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                          >
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-gray-50 text-muted-foreground transition group-hover:text-foreground">
+                              <ShieldCheck className="size-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-semibold">
+                                {role.name}
+                              </span>
+                              <span className="mt-1 block truncate text-sm text-muted-foreground">
+                                Настройка доступа для пользователей этой роли
+                              </span>
+                            </span>
+                            <span className="hidden rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-muted-foreground sm:inline-flex">
+                              {permissionCount} {permissionCount === 1 ? "право" : "прав"}
+                            </span>
+                            <ChevronRight className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+
+          <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+            Изменение названия и удаление ролей появятся после добавления
+            соответствующих ручек на backend.
+          </p>
+        </SettingsSection>
       )}
 
       <Dialog
@@ -494,7 +534,11 @@ export function SettingsPanel() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="min-h-0 overflow-y-auto">
+          <ScrollFade
+            className="min-h-0"
+            fadeClassName="from-background"
+            edgeClassName="bg-background"
+          >
             {isRolePermissionsLoading ? (
               <LoadingBlock label="Загружаем права роли" />
             ) : roleDialogError ? (
@@ -565,7 +609,7 @@ export function SettingsPanel() {
                 })}
               </div>
             )}
-          </div>
+          </ScrollFade>
 
           <DialogFooter className="border-t pt-4">
             <div className="mr-auto self-center text-xs text-muted-foreground">
@@ -704,39 +748,92 @@ export function SettingsPanel() {
 
 function GeneralSettings() {
   return (
-    <section
-      role="tabpanel"
-      aria-label="Общие настройки"
-      className="w-full max-w-5xl p-5 md:p-8"
-    >
-      <div className="">
-        <h2 className="font-semibold">Общие настройки</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Раздел подготовлен для общесистемных параметров. Доступные backend
-          ручки сейчас покрывают только роли и права.
-        </p>
-
-        <div className="mt-6 divide-y rounded-xl border">
-          <SettingRow
-            title="Название системы"
-            description="Отображается в интерфейсе и заголовке страницы"
-            value="Вера"
-          />
-          <SettingRow
-            title="Язык интерфейса"
-            description="Локализация административной панели"
-            value="Русский"
-          />
-          <SettingRow
-            title="Адрес API"
-            description="Текущий API v1 из конфигурации окружения"
-            value={API_V1}
-            mono
-          />
-        </div>
+    <SettingsSection ariaLabel="Общие настройки">
+      <SettingsSectionHeader
+        title="Общие настройки"
+        description="Основные параметры интерфейса и подключения."
+      />
+      <div className="mt-6 divide-y rounded-xl border">
+        <SettingRow title="Название системы" description="Отображается в интерфейсе и заголовке страницы" value="Вера" />
+        <SettingRow title="Язык интерфейса" description="Локализация административной панели" value="Русский" />
+        <SettingRow title="Адрес API" description="Текущий API v1 из конфигурации окружения" value={API_V1} mono />
       </div>
-    </section>
+    </SettingsSection>
   );
+}
+
+function GpsSettings() {
+  const showAlert = useAlert();
+  const [policy, setPolicy] = useState<GeoTrackingPolicy | null>(null);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    geoTrackingPolicyApi.get().then(setPolicy).catch((error) => setPolicyError(getErrorMessage(error)));
+  }, []);
+
+  const setNumber = (field: keyof Omit<GeoTrackingPolicy, "updated_at">, value: string) => {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return;
+    setPolicy((current) => current ? { ...current, [field]: number } : current);
+  };
+
+  const save = async () => {
+    if (!policy) return;
+    setSaving(true);
+    try {
+      const updated = await geoTrackingPolicyApi.update({
+        active_call_interval_seconds: policy.active_call_interval_seconds,
+        max_accuracy_meters: policy.max_accuracy_meters,
+        location_freshness_seconds: policy.location_freshness_seconds,
+        eta_average_speed_kmh: policy.eta_average_speed_kmh,
+        eta_road_distance_factor: policy.eta_road_distance_factor,
+      });
+      setPolicy(updated);
+      setPolicyError(null);
+      showAlert({ title: "GPS-политика сохранена", type: "success" });
+    } catch (error) {
+      showAlert({ title: "Не удалось сохранить GPS-политику", description: getErrorMessage(error), type: "error" });
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <SettingsSection ariaLabel="GPS и ETA">
+      <SettingsSectionHeader
+        title="GPS и расчёт ETA"
+        description="Политика определяет частоту координат, допустимое качество GPS и параметры приблизительного прогноза прибытия."
+        action={
+          <Button size="sm" onClick={() => void save()} disabled={!policy || saving}>
+            {saving && <LoaderCircle className="animate-spin" />}
+            Сохранить
+          </Button>
+        }
+      />
+
+      {policyError ? (
+        <p className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{policyError}</p>
+      ) : !policy ? (
+        <LoadingBlock label="Загружаем GPS-политику" />
+      ) : (
+        <div className="mt-6 divide-y rounded-xl border">
+          <PolicyField label="Интервал отправки координат" description="Как часто планшет отправляет GPS во время активного вызова" suffix="сек." value={policy.active_call_interval_seconds} min={5} max={300} onChange={(value) => setNumber("active_call_interval_seconds", value)} />
+          <PolicyField label="Допустимая точность" description="Точки с худшей точностью сервер отклонит" suffix="м" value={policy.max_accuracy_meters} min={0.1} max={10000} onChange={(value) => setNumber("max_accuracy_meters", value)} />
+          <PolicyField label="Срок свежести координаты" description="После этого времени ETA помечается как устаревший" suffix="сек." value={policy.location_freshness_seconds} min={15} max={3600} onChange={(value) => setNumber("location_freshness_seconds", value)} />
+          <PolicyField label="Средняя скорость скорой" description="Используется только для приблизительного расчёта ETA" suffix="км/ч" value={policy.eta_average_speed_kmh} min={10} max={180} onChange={(value) => setNumber("eta_average_speed_kmh", value)} />
+          <PolicyField label="Коэффициент дорожного пути" description="Компенсирует отличие прямого расстояния от реального маршрута" value={policy.eta_road_distance_factor} min={1} max={3} step={0.01} onChange={(value) => setNumber("eta_road_distance_factor", value)} />
+        </div>
+      )}
+
+      <p className="mt-1 text-sm text-muted-foreground">
+        ETA рассчитывается без учёта пробок и не заменяет навигацию или связь с диспетчером.
+      </p>
+    </SettingsSection>
+  );
+}
+
+function PolicyField({ label, description, suffix, value, min, max, step = 1, onChange }: { label: string; description: string; suffix?: string; value: number; min: number; max: number; step?: number; onChange: (value: string) => void }) {
+  const id = `gps-${label.toLocaleLowerCase("ru-RU").replaceAll(" ", "-")}`;
+  return <div className="flex flex-col gap-3 px-4 py-5 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><Label htmlFor={id}>{label}</Label><p className="mt-1 text-sm text-muted-foreground">{description}</p></div><div className="flex w-full items-center gap-2 sm:w-48"><Input id={id} type="number" value={value} min={min} max={max} step={step} onChange={(event) => onChange(event.target.value)} />{suffix && <span className="shrink-0 text-sm text-muted-foreground">{suffix}</span>}</div></div>;
 }
 
 function SettingRow({

@@ -14,7 +14,6 @@ import { useAlert } from "@/features/alert/alert-store";
 import { getFormsError, useForms } from "../hooks/use-forms";
 import { ChecklistDialog } from "./checklist-dialog";
 import { FormWorkspace } from "./form-workspace";
-import { SicknessesPanel } from "./sicknesses-panel";
 
 export function FormsManagement() {
   const showAlert = useAlert();
@@ -25,9 +24,6 @@ export function FormsManagement() {
     error,
     refresh,
     create,
-    createSickness,
-    updateSickness,
-    removeSickness,
     update,
     remove,
   } = useForms();
@@ -107,29 +103,14 @@ export function FormsManagement() {
   return <div className="flex min-h-0 flex-1 flex-col gap-3 pt-3">
     <Card size="sm"><CardContent className="flex flex-row flex-wrap items-center gap-2">
       <InputGroup className="min-w-64 flex-1 shadow-none"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по названию, описанию или заболеванию" aria-label="Поиск форм" /></InputGroup>
-      <Select value={sicknessFilter} onValueChange={(value) => setSicknessFilter(value ?? "all")}>
-        <SelectTrigger className="min-w-48 bg-background shadow-none" size="sm" aria-label="Фильтр по заболеванию"><SelectValue /></SelectTrigger>
-        <SelectContent align="start"><SelectGroup><SelectLabel>Заболевание</SelectLabel><SelectItem value="all">Все заболевания</SelectItem>{sicknesses.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectGroup></SelectContent>
-      </Select>
+      <Select value={sicknessFilter} onValueChange={(value) => setSicknessFilter(value ?? "all")}><SelectTrigger className="w-52 bg-background shadow-none" size="sm" aria-label="Фильтр по заболеванию"><SelectValue /></SelectTrigger><SelectContent align="start"><SelectGroup><SelectLabel>Заболевание</SelectLabel><SelectItem value="all">Все заболевания</SelectItem>{sicknesses.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectGroup></SelectContent></Select>
       <Button type="button" variant="outline" size="sm" onClick={() => void handleRefresh()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} /> Обновить</Button>
       <Button type="button" size="sm" onClick={openCreateDialog}><Plus /> Создать форму</Button>
     </CardContent></Card>
 
     {error && !loading && <Alert variant="destructive"><AlertTitle>Не удалось загрузить формы</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 
-    <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto pb-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:overflow-hidden">
-      <SicknessesPanel
-        sicknesses={sicknesses}
-        forms={forms}
-        loading={loading}
-        selectedId={sicknessFilter}
-        onSelect={setSicknessFilter}
-        onCreate={createSickness}
-        onUpdate={updateSickness}
-        onRemove={removeSickness}
-      />
-
-      <div className="min-h-0 xl:overflow-y-auto">
+    <div className="min-h-0 flex-1 overflow-y-auto pb-5">
         {loading ? <div className="flex h-48 items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Загружаем формы…</div>
           : visible.length === 0 ? <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed bg-background p-6 text-center"><ClipboardList className="mb-3 size-8 text-muted-foreground" /><p className="font-medium">{forms.length ? "Формы не найдены" : "Форм пока нет"}</p><p className="mt-1 max-w-sm text-sm text-muted-foreground">{forms.length ? "Измените поиск или выберите другое заболевание." : "Создайте форму и сразу настройте её полный сценарий."}</p>{forms.length === 0 && <Button className="mt-4" size="sm" onClick={openCreateDialog}><Plus /> Создать форму</Button>}</div>
           : <Card className="overflow-hidden py-0"><Table><TableHeader><TableRow><TableHead>Форма</TableHead><TableHead>Заболевание</TableHead><TableHead>Обновлена</TableHead><TableHead className="w-56">Действия</TableHead></TableRow></TableHeader><TableBody>{visible.map((form) => <TableRow key={form.id}>
@@ -138,8 +119,6 @@ export function FormsManagement() {
             <TableCell className="text-muted-foreground">{form.updated_at ? new Date(form.updated_at).toLocaleDateString("ru-RU") : "—"}</TableCell>
             <TableCell><div className="flex items-center gap-1"><Button type="button" size="sm" variant="outline" onClick={() => openWorkspace(form.id)}><Settings2 /> Открыть</Button><Button type="button" size="icon-sm" variant="ghost" aria-label={`Удалить ${form.name}`} onClick={() => setDeleting(form)}><Trash2 /></Button></div></TableCell>
           </TableRow>)}</TableBody></Table></Card>}
-      </div>
-
     </div>
 
     {selected && <FormWorkspace
@@ -158,7 +137,6 @@ export function FormsManagement() {
       open={createDialogOpen}
       form={null}
       sicknesses={sicknesses}
-      onCreateSickness={createSickness}
       onOpenChange={setCreateDialogOpen}
       onOpenChangeComplete={(open) => {
         if (!open) setCreateDialogMounted(false);

@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { AlertCircle, Building2, Plus, SearchX } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 import type { Hospital } from "@/entities/hospital/model/types";
 import { useAlert } from "@/features/alert/alert-store";
-import { FacilityTypesPanel } from "./facility-types-panel";
-import { HospitalDetailsDialog } from "./hospital-details-dialog";
 import { HospitalForm } from "./hospital-form";
 import { HospitalsGrid, HospitalsTable } from "./hospitals-list";
 import {
@@ -21,55 +21,31 @@ import {
 } from "../hooks/use-hospitals";
 
 export function HospitalsManagement() {
+  const router = useRouter();
   const showAlert = useAlert();
   const {
     hospitals,
     facilityTypes,
     sicknesses,
-    hospitalSicknesses,
     isLoading,
     error,
     refresh,
     loadHospitalSicknesses,
     createHospital,
     updateHospital,
-    removeHospital,
-    createFacilityType,
-    updateFacilityType,
-    removeFacilityType,
   } = useHospitals();
   const [query, setQuery] = useState("");
   const [facilityTypeId, setFacilityTypeId] = useState("all");
   const [sort, setSort] = useState<HospitalsSort>("name-asc");
   const [viewMode, setViewMode] = useState<HospitalsViewMode>("grid");
-  const [formTarget, setFormTarget] = useState<Hospital | "new" | null>(null);
-  const [selectedId, setSelectedId] = useState<Hospital["id"] | null>(null);
-  const [loadingDetailsId, setLoadingDetailsId] = useState<Hospital["id"] | null>(null);
+  const [formTarget, setFormTarget] = useState<"new" | null>(null);
 
   const facilityTypeNames = useMemo(
     () => Object.fromEntries(facilityTypes.map((type) => [type.id, type.name])),
     [facilityTypes],
   );
-  const selectedHospital = selectedId
-    ? hospitals.find((hospital) => hospital.id === selectedId) ?? null
-    : null;
-
   const openDetails = (hospital: Hospital) => {
-    setSelectedId(hospital.id);
-    setLoadingDetailsId(hospital.id);
-    loadHospitalSicknesses(hospital.id)
-      .catch((requestError) => {
-        showAlert({
-          title: "Не удалось загрузить направления центра",
-          description: getHospitalsErrorMessage(requestError),
-          type: "error",
-        });
-      })
-      .finally(() => {
-        setLoadingDetailsId((current) =>
-          current === hospital.id ? null : current,
-        );
-      });
+    router.push(`/hospitals/${hospital.id}`);
   };
 
   const visibleHospitals = useMemo(() => {
@@ -118,20 +94,15 @@ export function HospitalsManagement() {
     }
   };
 
-  const handleEdit = (hospital: Hospital) => {
-    setSelectedId(null);
-    setFormTarget(hospital);
-  };
-
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 pt-3">
+    <div className="flex min-h-0 flex-1 flex-col">
       <HospitalsToolbar
         query={query}
         facilityTypeId={facilityTypeId}
         sort={sort}
         viewMode={viewMode}
-        facilityTypes={facilityTypes}
         isLoading={isLoading}
+        facilityTypes={facilityTypes}
         onQueryChange={setQuery}
         onFacilityTypeChange={setFacilityTypeId}
         onSortChange={setSort}
@@ -148,19 +119,10 @@ export function HospitalsManagement() {
         </Alert>
       )}
 
-      <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto pb-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:overflow-hidden">
-        <FacilityTypesPanel
-          facilityTypes={facilityTypes}
-          hospitals={hospitals}
-          loading={isLoading}
-          selectedId={facilityTypeId}
-          onSelect={setFacilityTypeId}
-          onCreate={createFacilityType}
-          onUpdate={updateFacilityType}
-          onRemove={removeFacilityType}
-        />
-
-        <div className="min-h-0 py-1 xl:overflow-y-auto">
+      <ScrollFade
+        className="min-h-0 flex-1"
+        viewportClassName="py-1 pb-5"
+      >
           {isLoading ? (
             <HospitalsLoading viewMode={viewMode} />
           ) : visibleHospitals.length === 0 ? (
@@ -174,34 +136,15 @@ export function HospitalsManagement() {
               hospitals={visibleHospitals}
               facilityTypeNames={facilityTypeNames}
               onOpen={openDetails}
-              onEdit={handleEdit}
             />
           ) : (
             <HospitalsTable
               hospitals={visibleHospitals}
               facilityTypeNames={facilityTypeNames}
               onOpen={openDetails}
-              onEdit={handleEdit}
             />
           )}
-        </div>
-      </div>
-
-      <HospitalDetailsDialog
-        hospital={selectedHospital}
-        facilityTypeName={
-          selectedHospital
-            ? facilityTypeNames[selectedHospital.facility_type_id]
-            : undefined
-        }
-        sicknesses={selectedId ? hospitalSicknesses[selectedId] : undefined}
-        isLoadingSicknesses={loadingDetailsId === selectedId}
-        onEdit={handleEdit}
-        onDelete={removeHospital}
-        onOpenChange={(open) => {
-          if (!open) setSelectedId(null);
-        }}
-      />
+      </ScrollFade>
 
       <HospitalForm
         target={formTarget}
@@ -211,7 +154,11 @@ export function HospitalsManagement() {
           if (!open) setFormTarget(null);
         }}
         onLoadSicknesses={loadHospitalSicknesses}
-        onCreate={createHospital}
+        onCreate={async (data, sicknessIds) => {
+          const created = await createHospital(data, sicknessIds);
+          router.push(`/hospitals/${created.id}`);
+          return created;
+        }}
         onUpdate={updateHospital}
       />
     </div>

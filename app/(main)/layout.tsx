@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <div className="h-screen w-screen flex p-3 gap-5 bg-gray-100">
+    <div className="flex h-dvh w-full gap-3 bg-gray-100 p-3 lg:gap-5">
       <BacksideMenu />
-      <HeaderRight/>
-      <div className="flex-1 h-full">{children}</div>
+      <HeaderRight />
+      <div className="h-full min-w-0 flex-1">{children}</div>
     </div>
   );
 }

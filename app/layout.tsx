@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import "leaflet/dist/leaflet.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
-import { cn } from "@/lib/utils";
 import { AlertProvider } from "@/features/alert/alert-store";
 import { ApiInitializer } from "@/features/api/ApiInitializer";
 import { AuthProvider } from "@/features/auth/AuthProvider";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Вера",
@@ -16,7 +14,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={cn("h-full antialiased", "font-sans", inter.variable)}
+      className="h-full font-sans antialiased"
     >
       <body suppressHydrationWarning>
         <AlertProvider>

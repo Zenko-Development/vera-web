@@ -1,7 +1,7 @@
 // app/logout/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/useAuth";
 import { ScreenLoader } from "@/widgets/screen-loader/ScreenLoader";

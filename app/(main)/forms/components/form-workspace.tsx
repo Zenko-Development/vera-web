@@ -14,13 +14,15 @@ import { useFormVersion } from "../hooks/use-form-version";
 import { getFormsError } from "../hooks/use-forms";
 import { QuestionsEditor } from "./questions-editor";
 import { ResultsRulesEditor } from "./results-rules-editor";
+import { ResourceRequirementsEditor } from "./resource-requirements-editor";
 import { RoutingEditor } from "./routing-editor";
 import { getPublicationChecks } from "../lib/publication-readiness";
 
-type EditorStep = "builder" | "logic" | "routing";
+type EditorStep = "builder" | "logic" | "resources" | "routing";
 const steps: Array<{ id: EditorStep; label: string; short: string }> = [
   { id: "builder", label: "Конструктор", short: "Вопросы и предпросмотр" },
   { id: "logic", label: "Логика результата", short: "Результаты и правила" },
+  { id: "resources", label: "Требования", short: "Оборудование и операционные" },
   { id: "routing", label: "Маршрутизация", short: "Выбор больницы" },
 ];
 
@@ -63,6 +65,7 @@ export function FormWorkspace({
   const publicationChecks = useMemo(() => getPublicationChecks(data), [data]);
   const passedChecks = publicationChecks.filter((check) => check.valid).length;
   const readyForPublication = passedChecks === publicationChecks.length;
+  const currentStepIndex = steps.findIndex((item) => item.id === step);
 
   const loadVersions = useCallback(async () => {
     setVersionsLoading(true);
@@ -357,6 +360,7 @@ export function FormWorkspace({
                   variant={step === item.id ? "secondary" : "ghost"}
                   onClick={() => setStep(item.id)}
                 >
+                  <span className={step === item.id ? "flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground" : "flex size-5 items-center justify-center rounded-full bg-muted text-[11px] text-muted-foreground"}>{steps.findIndex((candidate) => candidate.id === item.id) + 1}</span>
                   <span>{item.label}</span>
                   <span className="hidden text-muted-foreground lg:inline">· {item.short}</span>
                 </Button>
@@ -394,7 +398,25 @@ export function FormWorkspace({
                   onChanged={reloadData}
                 />
               )}
+              {step === "resources" && (
+                <ResourceRequirementsEditor
+                  version={selectedVersion}
+                  data={data}
+                  onChanged={reloadData}
+                />
+              )}
             </main>
+            <footer className="flex shrink-0 items-center justify-between gap-3 border-t bg-background px-5 py-3">
+              <p className="text-xs text-muted-foreground">Шаг {currentStepIndex + 1} из {steps.length} · {steps[currentStepIndex].short}</p>
+              <div className="flex items-center gap-2">
+                <Button type="button" size="sm" variant="outline" disabled={currentStepIndex === 0} onClick={() => setStep(steps[currentStepIndex - 1].id)}>Назад</Button>
+                {currentStepIndex < steps.length - 1 ? (
+                  <Button type="button" size="sm" onClick={() => setStep(steps[currentStepIndex + 1].id)}>Далее: {steps[currentStepIndex + 1].label}</Button>
+                ) : selectedVersion.status === "draft" ? (
+                  <Button type="button" size="sm" onClick={requestPublish} disabled={busy || dataLoading}><Send />Проверить и опубликовать</Button>
+                ) : null}
+              </div>
+            </footer>
           </>
         )}
 
@@ -408,14 +430,15 @@ export function FormWorkspace({
             </DialogHeader>
             <div className="space-y-2">
               {publicationChecks.map((check) => (
-                <div key={check.label} className="flex items-start gap-3 rounded-lg border p-3 text-sm">
+                <button key={check.label} type="button" disabled={check.valid} onClick={() => { setStep(check.section); setReadinessOpen(false); }} className="flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm transition enabled:hover:border-foreground/30 enabled:hover:bg-muted/50">
                   {check.valid ? (
                     <CircleCheck className="mt-0.5 size-4 shrink-0 text-green-600" />
                   ) : (
                     <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
                   )}
-                  <span>{check.label}</span>
-                </div>
+                  <span className="flex-1">{check.label}</span>
+                  {!check.valid && <span className="text-xs text-muted-foreground">Перейти</span>}
+                </button>
               ))}
             </div>
             <DialogFooter>

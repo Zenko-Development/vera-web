@@ -2,11 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { facilityTypeApi } from "@/entities/facility-type/api/facility-type.api";
-import type {
-  CreateFacilityTypeRequest,
-  FacilityType,
-  UpdateFacilityTypeRequest,
-} from "@/entities/facility-type/model/types";
+import type { FacilityType } from "@/entities/facility-type/model/types";
 import { hospitalSicknessApi } from "@/entities/hospital-sickness/api/hospital-sickness.api";
 import { hospitalApi } from "@/entities/hospital/api/hospital.api";
 import type {
@@ -190,42 +186,6 @@ export function useHospitals() {
     });
   }, []);
 
-  const createFacilityType = useCallback(
-    async (data: CreateFacilityTypeRequest) => {
-      const created = await facilityTypeApi.create(data);
-      setFacilityTypes((current) => [
-        ...current.filter((item) => item.id !== created.id),
-        created,
-      ]);
-      return created;
-    },
-    [],
-  );
-
-  const updateFacilityType = useCallback(
-    async (id: FacilityType["id"], data: UpdateFacilityTypeRequest) => {
-      const updated = await facilityTypeApi.update(id, data);
-      if (!updated) {
-        throw new Error("Сервер не подтвердил обновление типа учреждения.");
-      }
-      setFacilityTypes((current) =>
-        current.map((item) => (item.id === id ? updated : item)),
-      );
-      return updated;
-    },
-    [],
-  );
-
-  const removeFacilityType = useCallback(async (id: FacilityType["id"]) => {
-    const result = await facilityTypeApi.delete(id);
-    if (result === undefined) {
-      throw new Error(
-        "Сервер не подтвердил удаление. Возможно, тип используется в маршрутизации.",
-      );
-    }
-    setFacilityTypes((current) => current.filter((item) => item.id !== id));
-  }, []);
-
   return {
     hospitals,
     facilityTypes,
@@ -238,8 +198,5 @@ export function useHospitals() {
     createHospital,
     updateHospital,
     removeHospital,
-    createFacilityType,
-    updateFacilityType,
-    removeFacilityType,
   };
 }
