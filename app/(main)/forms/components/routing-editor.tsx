@@ -95,7 +95,7 @@ export function RoutingEditor({ version, data, onChanged }: Props) {
         <CardContent>
           {routing?.routing_type === "fixed" && <p className="text-sm">{data.hospitals.find((hospital) => hospital.id === routing.hospital_id)?.name ?? "Больница не найдена"}</p>}
           {routing?.routing_type === "by_tag" && <p className="text-sm">{data.facilityTypes.find((type) => type.id === routing.facility_type_id)?.name ?? "Тип учреждения не найден"}</p>}
-          {routing?.routing_type === "by_service_area" && <p className="text-sm text-muted-foreground">Больница определяется по свежей GPS-точке и активной зоне.</p>}
+          {routing?.routing_type === "by_service_area" && <p className="text-sm text-muted-foreground">Больница определяется по свежей геопозиции и активной зоне.</p>}
           {editable && <div className="mt-2 flex gap-2"><Button size="sm" variant="outline" onClick={() => openEditor(result)}><Pencil /> {routing ? "Изменить" : "Настроить"}</Button>{routing && <Button size="icon-sm" variant="ghost" aria-label="Удалить маршрутизацию" onClick={() => setDeleteResult(result)}><Trash2 /></Button>}</div>}
         </CardContent>
       </Card>;

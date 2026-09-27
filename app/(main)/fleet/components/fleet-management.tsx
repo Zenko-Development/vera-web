@@ -152,7 +152,7 @@ export function FleetManagement() {
             <div><h2 className="font-semibold">Планшеты</h2><p className="text-sm text-muted-foreground">Зарегистрируйте устройство и сразу сохраните одноразовый секрет на планшете.</p></div>
             <Button size="sm" onClick={() => void provision()} disabled={busy}><Plus /> Зарегистрировать планшет</Button>
           </header>
-          <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Device ID</TableHead><TableHead>Статус</TableHead><TableHead>Последняя связь</TableHead><TableHead className="w-40" /></TableRow></TableHeader>
+          <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Идентификатор устройства</TableHead><TableHead>Статус</TableHead><TableHead>Последняя связь</TableHead><TableHead className="w-40" /></TableRow></TableHeader>
             <TableBody>{devices.map((device) => <TableRow key={device.id}><TableCell className="max-w-64 truncate font-mono text-xs"><span className="inline-flex items-center gap-2"><Tablet className="size-4 text-muted-foreground" />{device.device_id}</span></TableCell><TableCell>{device.status === "active" ? "Активен" : "Отключён"}</TableCell><TableCell className="text-muted-foreground">{device.last_seen_at ? formatDate(device.last_seen_at) : "Нет данных"}</TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => setResetTarget(device)} disabled={busy}><KeyRound /> Заменить секрет</Button></TableCell></TableRow>)}</TableBody>
           </Table>
           </div>
@@ -170,7 +170,7 @@ export function FleetManagement() {
 
       <Dialog open={credentials !== null} onOpenChange={(open) => { if (!open) setCredentials(null); }}>
         <DialogContent><DialogHeader><DialogTitle>Данные планшета</DialogTitle><DialogDescription>Секрет отображается один раз. Передайте его в защищённое хранилище планшета.</DialogDescription></DialogHeader>
-          {credentials && <div className="grid gap-3"><Credential label="Device ID" value={credentials.device.device_id} /><Credential label="Auth secret" value={credentials.auth_secret} /></div>}
+          {credentials && <div className="grid gap-3"><Credential label="Идентификатор устройства" value={credentials.device.device_id} /><Credential label="Секрет авторизации" value={credentials.auth_secret} /></div>}
           <DialogFooter><Button onClick={() => setCredentials(null)}>Готово</Button></DialogFooter></DialogContent>
       </Dialog>
       <Dialog open={resetTarget !== null} onOpenChange={(open) => { if (!open && !busy) setResetTarget(null); }}><DialogContent><DialogHeader><DialogTitle>Заменить секрет планшета?</DialogTitle><DialogDescription>Активные смены устройства будут отозваны. Старый секрет перестанет работать.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setResetTarget(null)} disabled={busy}>Отмена</Button><Button variant="destructive" onClick={() => { if (resetTarget) void resetSecret(resetTarget); }} disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}Заменить секрет</Button></DialogFooter></DialogContent></Dialog>

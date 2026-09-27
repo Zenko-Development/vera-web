@@ -190,7 +190,7 @@ export function Dashboard() {
           icon={Tablet}
           title="Активные планшеты"
           value={deviceSummary ? `${deviceSummary.active} / ${deviceSummary.total}` : null}
-          description={deviceSummary?.hasHeartbeat ? `На связи за 5 минут: ${deviceSummary.recent}` : "Heartbeat-данные пока не поступают"}
+          description={deviceSummary?.hasHeartbeat ? `На связи за 5 минут: ${deviceSummary.recent}` : "Данные о последней связи пока не поступают"}
           loading={loading && !updatedAt}
         />
         <MetricCard
@@ -247,7 +247,7 @@ function ArrivalsCard({ arrivals, loading }: { arrivals: HospitalArrival[] | nul
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-sm font-medium">{formatDuration(arrival.estimated_travel_seconds)}</p>
-                  <p className={arrival.location_is_fresh ? "text-xs text-emerald-600 dark:text-emerald-400" : "text-xs text-amber-600 dark:text-amber-400"}>{arrival.location_is_fresh ? "GPS актуален" : "GPS устарел"}</p>
+                  <p className={arrival.location_is_fresh ? "text-xs text-emerald-600 dark:text-emerald-400" : "text-xs text-amber-600 dark:text-amber-400"}>{arrival.location_is_fresh ? "Геопозиция актуальна" : "Геопозиция устарела"}</p>
                 </div>
               </div>
             ))}

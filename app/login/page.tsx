@@ -63,18 +63,18 @@ export default function Login() {
                 Вход в систему
               </CardTitle>
               <CardDescription className="text-center">
-                Введите ваш логин и пароль для продолжения
+                Введите имя пользователя и пароль для продолжения
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit}>
                 <div className="flex flex-col gap-6">
                   <div className="grid gap-2">
-                    <Label htmlFor="username">Логин</Label>
+                    <Label htmlFor="username">Имя пользователя</Label>
                     <Input
                       id="username"
                       type="text"
-                      placeholder="Логин"
+                      placeholder="Имя пользователя"
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}

@@ -41,7 +41,7 @@ type MenuItem = {
 };
 
 const primaryItems: MenuItem[] = [
-  { href: "/", label: "Дашборд", icon: LayoutDashboard },
+  { href: "/", label: "Главная", icon: LayoutDashboard },
   { href: "/users", label: "Пользователи", icon: UsersRound },
   { href: "/hospitals", label: "Сосудистые центры", icon: Hospital },
   { href: "/map", label: "Карта", icon: MapPinned },
@@ -178,7 +178,7 @@ export function BacksideMenu() {
           <DialogHeader>
             <DialogTitle>Выйти из аккаунта?</DialogTitle>
             <DialogDescription>
-              Для продолжения работы потребуется снова ввести логин и пароль.
+              Для продолжения работы потребуется снова ввести имя пользователя и пароль.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

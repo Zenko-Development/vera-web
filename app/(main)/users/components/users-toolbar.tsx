@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Role } from "@/entities/role/model/types";
+import { getRoleDisplayName } from "@/entities/role/lib/role-presenters";
 
 export type UsersViewMode = "grid" | "table";
 export type UsersSort = "name-asc" | "name-desc" | "username-asc";
@@ -87,7 +88,7 @@ export function UsersToolbar({
         <InputGroupInput
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Поиск по имени или логину"
+          placeholder="Поиск по имени или имени пользователя"
           aria-label="Поиск пользователей"
         />
       </InputGroup>
@@ -105,7 +106,7 @@ export function UsersToolbar({
             <SelectItem value="all">Все роли</SelectItem>
             {roles.map((role) => (
               <SelectItem key={role.id} value={role.id}>
-                {role.name}
+                {getRoleDisplayName(role.name)}
               </SelectItem>
             ))}
           </SelectGroup>
@@ -145,7 +146,7 @@ export function UsersToolbar({
             <SelectLabel>Сортировка</SelectLabel>
             <SelectItem value="name-asc">ФИО: А–Я</SelectItem>
             <SelectItem value="name-desc">ФИО: Я–А</SelectItem>
-            <SelectItem value="username-asc">По логину</SelectItem>
+            <SelectItem value="username-asc">По имени пользователя</SelectItem>
           </SelectGroup>
         </SelectContent>
       </Select>

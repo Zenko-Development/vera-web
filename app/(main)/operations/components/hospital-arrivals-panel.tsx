@@ -73,7 +73,7 @@ export function HospitalArrivalsPanel({
                   </CardHeader>
                   <CardContent className="space-y-1 text-sm">
                     <p>
-                      ETA: <strong>{formatDate(arrival.estimated_arrival_at)}</strong>
+                      Прибытие: <strong>{formatDate(arrival.estimated_arrival_at)}</strong>
                     </p>
                     <p>
                       Расстояние: {Math.round(arrival.distance_meters / 100) / 10} км
@@ -85,7 +85,7 @@ export function HospitalArrivalsPanel({
                           : "font-medium text-destructive"
                       }
                     >
-                      {arrival.location_is_fresh ? "GPS актуален" : "GPS устарел"}
+                      {arrival.location_is_fresh ? "Геопозиция актуальна" : "Геопозиция устарела"}
                     </p>
                   </CardContent>
                 </Card>
@@ -102,7 +102,7 @@ export function HospitalArrivalsPanel({
           <ArrivalsMap hospitals={mappedHospitals} arrivals={arrivals} />
           {mappedVehiclesCount === 0 && (
             <div className="pointer-events-none absolute inset-x-4 top-4 z-500 rounded-lg bg-popover/90 p-3 text-center text-xs text-muted-foreground shadow-sm backdrop-blur-sm">
-              Машины с доступной GPS-позицией появятся здесь автоматически.
+              Машины с доступной геопозицией появятся здесь автоматически.
             </div>
           )}
         </div>

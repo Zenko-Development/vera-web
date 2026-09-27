@@ -5,7 +5,7 @@ import { Dashboard } from "./components/dashboard";
 export default function Home() {
   return (
     <AuthGuard requireAuth redirectTo="/login" className="h-full min-h-0">
-      <Header title="Дашборд" />
+      <Header title="Главная" />
       <Dashboard />
     </AuthGuard>
   );

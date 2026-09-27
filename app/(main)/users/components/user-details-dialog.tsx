@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type { Role } from "@/entities/role/model/types";
+import { getRoleDisplayName } from "@/entities/role/lib/role-presenters";
 import type { User } from "@/entities/user/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { getUsersErrorMessage } from "../hooks/use-users";
@@ -88,7 +89,7 @@ export function UserDetailsDialog({
       )?.name;
       showAlert({
         title: "Роль изменена",
-        description: `${getUserFullName(updatedUser)}: ${roleName ?? "новая роль назначена"}.`,
+        description: `${getUserFullName(updatedUser)}: ${roleName ? getRoleDisplayName(roleName) : "новая роль назначена"}.`,
         type: "success",
       });
     } catch (error) {
@@ -164,7 +165,7 @@ export function UserDetailsDialog({
                       <SelectLabel>Доступные роли</SelectLabel>
                       {roles.map((role) => (
                         <SelectItem key={role.id} value={role.id}>
-                          {role.name}
+                          {getRoleDisplayName(role.name)}
                         </SelectItem>
                       ))}
                     </SelectGroup>
@@ -198,7 +199,7 @@ export function UserDetailsDialog({
               </div>
             </div>
             <div className="px-4 py-3">
-              <p className="text-sm text-muted-foreground">ID пользователя</p>
+              <p className="text-sm text-muted-foreground">Идентификатор пользователя</p>
               <p className="mt-1 break-all font-mono text-xs">{user.id}</p>
             </div>
           </div>
@@ -206,7 +207,7 @@ export function UserDetailsDialog({
 
         <p className="text-xs leading-relaxed text-muted-foreground">
           Изменение профиля и удаление станут доступны после появления
-          соответствующих backend-ручек. Роль и доступ можно менять здесь.
+          соответствующих серверных методов. Роль и доступ можно менять здесь.
         </p>
 
         <DialogFooter>

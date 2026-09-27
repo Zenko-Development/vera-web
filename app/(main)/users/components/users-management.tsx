@@ -5,6 +5,7 @@ import { AlertCircle, Plus, SearchX, UsersRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { getRoleDisplayName } from "@/entities/role/lib/role-presenters";
 import type { User } from "@/entities/user/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { useUserPreference } from "@/features/preferences/use-user-preference";
@@ -51,7 +52,7 @@ export function UsersManagement() {
   const [selectedUserId, setSelectedUserId] = useState<User["id"] | null>(null);
 
   const roleNames = useMemo(
-    () => Object.fromEntries(roles.map((role) => [role.id, role.name])),
+    () => Object.fromEntries(roles.map((role) => [role.id, getRoleDisplayName(role.name)])),
     [roles],
   );
 

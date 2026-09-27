@@ -77,7 +77,7 @@ function parseBoundary(value: string): {
     }
     const [latitude, longitude] = values;
     if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-      return { boundary: [], error: "Координаты выходят за диапазон WGS 84." };
+      return { boundary: [], error: "Координаты выходят за допустимый диапазон." };
     }
     boundary.push([latitude, longitude]);
   }
@@ -259,7 +259,7 @@ export function ServiceAreaDialog({
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Поиск запускается только по кнопке или Enter. Добавьте город, если название района неоднозначно.
+                  Поиск запускается только по кнопке или клавише ввода. Добавьте город, если название района неоднозначно.
                 </p>
               </div>
 

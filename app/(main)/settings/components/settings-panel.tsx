@@ -35,9 +35,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { geoTrackingPolicyApi } from "@/entities/geo-tracking-policy/api/geo-tracking-policy.api";
 import type { GeoTrackingPolicy } from "@/entities/geo-tracking-policy/model/types";
 import { permissionApi } from "@/entities/permission/api/permission.api";
+import { getPermissionDisplayName } from "@/entities/permission/lib/permission-presenters";
 import type { Permission } from "@/entities/permission/model/types";
 import { rolePermissionApi } from "@/entities/role-permission/api/role-permission.api";
 import { roleApi } from "@/entities/role/api/role.api";
+import { getRoleDisplayName } from "@/entities/role/lib/role-presenters";
 import type { Role } from "@/entities/role/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { ApiError } from "@/shared/api/types";
@@ -131,7 +133,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
   const visibleRoles = useMemo(() => {
     const query = roleQuery.trim().toLocaleLowerCase("ru-RU");
     if (!query) return roles;
-    return roles.filter((role) => role.name.toLocaleLowerCase("ru-RU").includes(query));
+    return roles.filter((role) => `${role.name} ${getRoleDisplayName(role.name)}`.toLocaleLowerCase("ru-RU").includes(query));
   }, [roleQuery, roles]);
 
   useEffect(() => {
@@ -305,7 +307,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
       setIsRoleDialogOpen(false);
       showAlert({
         title: "Роль создана",
-        description: `Роль «${role.name}» добавлена в список.`,
+        description: `Роль «${getRoleDisplayName(role.name)}» добавлена в список.`,
         type: "success",
       });
     } catch (error) {
@@ -340,7 +342,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
       setIsPermissionDialogOpen(false);
       showAlert({
         title: "Право создано",
-        description: `Право «${permission.name}» теперь можно назначить роли.`,
+        description: `Право «${getPermissionDisplayName(permission.name)}» теперь можно назначить роли.`,
         type: "success",
       });
     } catch (error) {
@@ -379,7 +381,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
           className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
           <Satellite className="size-4" />
-          GPS и ETA
+          Геопозиция и прибытие
         </button>
         <button
           type="button"
@@ -492,7 +494,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="block font-semibold">
-                                {role.name}
+                                {getRoleDisplayName(role.name)}
                               </span>
                               <span className="mt-1 block truncate text-sm text-muted-foreground">
                                 Настройка доступа для пользователей этой роли
@@ -514,7 +516,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
 
           <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
             Изменение названия и удаление ролей появятся после добавления
-            соответствующих ручек на backend.
+            соответствующих серверных методов.
           </p>
         </SettingsSection>
       )}
@@ -527,7 +529,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
       >
         <DialogContent className="grid max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-lg">{selectedRole?.name}</DialogTitle>
+            <DialogTitle className="text-lg">{selectedRole ? getRoleDisplayName(selectedRole.name) : "Роль"}</DialogTitle>
             <DialogDescription>
               Отметьте права, которые должны быть доступны пользователям этой
               роли. Изменения применятся после сохранения.
@@ -536,8 +538,8 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
 
           <ScrollFade
             className="min-h-0"
-            fadeClassName="from-card dark:from-card"
-            edgeClassName="bg-card dark:bg-card"
+            fadeClassName="from-popover dark:from-popover"
+            edgeClassName="bg-popover dark:bg-popover"
           >
             {isRolePermissionsLoading ? (
               <LoadingBlock label="Загружаем права роли" />
@@ -597,7 +599,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
                       >
                         <span className="min-w-0">
                           <span className="block font-medium leading-4">
-                            {permission.name}
+                            {getPermissionDisplayName(permission.name)}
                           </span>
                           <span className="mt-1 block text-sm leading-relaxed font-normal text-muted-foreground">
                             {permission.description || "Без описания"}
@@ -659,7 +661,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
                 required
                 value={roleName}
                 onChange={(event) => setRoleName(event.target.value)}
-                placeholder="Например, dispatcher"
+                placeholder="Например, диспетчер"
                 disabled={isRoleSaving}
               />
             </div>
@@ -690,8 +692,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
             <DialogHeader>
               <DialogTitle>Новое право доступа</DialogTitle>
               <DialogDescription>
-                Используйте стабильное техническое имя, например
-                checklist.read.
+                Используйте стабильное техническое имя без пробелов.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
@@ -703,7 +704,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
                   required
                   value={permissionName}
                   onChange={(event) => setPermissionName(event.target.value)}
-                  placeholder="checklist.read"
+                  placeholder="Введите техническое имя"
                   disabled={isPermissionSaving}
                 />
               </div>
@@ -715,7 +716,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
                   onChange={(event) =>
                     setPermissionDescription(event.target.value)
                   }
-                  placeholder="Просмотр чеклистов"
+                  placeholder="Просмотр форм"
                   disabled={isPermissionSaving}
                 />
               </div>
@@ -756,7 +757,7 @@ function GeneralSettings() {
       <div className="mt-6 divide-y rounded-xl border">
         <SettingRow title="Название системы" description="Отображается в интерфейсе и заголовке страницы" value="Вера" />
         <SettingRow title="Язык интерфейса" description="Локализация административной панели" value="Русский" />
-        <SettingRow title="Адрес API" description="Текущий API v1 из конфигурации окружения" value={API_V1} mono />
+        <SettingRow title="Адрес сервера" description="Текущий адрес серверного интерфейса из конфигурации окружения" value={API_V1} mono />
       </div>
     </SettingsSection>
   );
@@ -791,17 +792,17 @@ function GpsSettings() {
       });
       setPolicy(updated);
       setPolicyError(null);
-      showAlert({ title: "GPS-политика сохранена", type: "success" });
+      showAlert({ title: "Политика геопозиции сохранена", type: "success" });
     } catch (error) {
-      showAlert({ title: "Не удалось сохранить GPS-политику", description: getErrorMessage(error), type: "error" });
+      showAlert({ title: "Не удалось сохранить политику геопозиции", description: getErrorMessage(error), type: "error" });
     } finally { setSaving(false); }
   };
 
   return (
-    <SettingsSection ariaLabel="GPS и ETA">
+    <SettingsSection ariaLabel="Геопозиция и время прибытия">
       <SettingsSectionHeader
-        title="GPS и расчёт ETA"
-        description="Политика определяет частоту координат, допустимое качество GPS и параметры приблизительного прогноза прибытия."
+        title="Геопозиция и расчёт времени прибытия"
+        description="Политика определяет частоту отправки координат, допустимую точность и параметры приблизительного прогноза прибытия."
         action={
           <Button size="sm" onClick={() => void save()} disabled={!policy || saving}>
             {saving && <LoaderCircle className="animate-spin" />}
@@ -813,19 +814,19 @@ function GpsSettings() {
       {policyError ? (
         <p className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{policyError}</p>
       ) : !policy ? (
-        <LoadingBlock label="Загружаем GPS-политику" />
+        <LoadingBlock label="Загружаем политику геопозиции" />
       ) : (
         <div className="mt-6 divide-y rounded-xl border">
-          <PolicyField label="Интервал отправки координат" description="Как часто планшет отправляет GPS во время активного вызова" suffix="сек." value={policy.active_call_interval_seconds} min={5} max={300} onChange={(value) => setNumber("active_call_interval_seconds", value)} />
+          <PolicyField label="Интервал отправки координат" description="Как часто планшет отправляет координаты во время активного вызова" suffix="сек." value={policy.active_call_interval_seconds} min={5} max={300} onChange={(value) => setNumber("active_call_interval_seconds", value)} />
           <PolicyField label="Допустимая точность" description="Точки с худшей точностью сервер отклонит" suffix="м" value={policy.max_accuracy_meters} min={0.1} max={10000} onChange={(value) => setNumber("max_accuracy_meters", value)} />
-          <PolicyField label="Срок свежести координаты" description="После этого времени ETA помечается как устаревший" suffix="сек." value={policy.location_freshness_seconds} min={15} max={3600} onChange={(value) => setNumber("location_freshness_seconds", value)} />
-          <PolicyField label="Средняя скорость скорой" description="Используется только для приблизительного расчёта ETA" suffix="км/ч" value={policy.eta_average_speed_kmh} min={10} max={180} onChange={(value) => setNumber("eta_average_speed_kmh", value)} />
+          <PolicyField label="Срок свежести координаты" description="После этого времени прогноз прибытия помечается как устаревший" suffix="сек." value={policy.location_freshness_seconds} min={15} max={3600} onChange={(value) => setNumber("location_freshness_seconds", value)} />
+          <PolicyField label="Средняя скорость скорой" description="Используется только для приблизительного расчёта времени прибытия" suffix="км/ч" value={policy.eta_average_speed_kmh} min={10} max={180} onChange={(value) => setNumber("eta_average_speed_kmh", value)} />
           <PolicyField label="Коэффициент дорожного пути" description="Компенсирует отличие прямого расстояния от реального маршрута" value={policy.eta_road_distance_factor} min={1} max={3} step={0.01} onChange={(value) => setNumber("eta_road_distance_factor", value)} />
         </div>
       )}
 
       <p className="mt-1 text-sm text-muted-foreground">
-        ETA рассчитывается без учёта пробок и не заменяет навигацию или связь с диспетчером.
+        Время прибытия рассчитывается без учёта пробок и не заменяет навигацию или связь с диспетчером.
       </p>
     </SettingsSection>
   );

@@ -206,8 +206,8 @@ export function LiveMapWorkspace() {
                         }
                         title={
                           arrival.location_is_fresh
-                            ? "GPS актуален"
-                            : "GPS устарел"
+                            ? "Геопозиция актуальна"
+                            : "Геопозиция устарела"
                         }
                       />
                     </div>

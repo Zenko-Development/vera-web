@@ -335,7 +335,7 @@ function StaffUserSelect({
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Поиск по имени или логину"
+              placeholder="Поиск по имени или имени пользователя"
               className="h-8 pl-8 shadow-none"
               aria-label="Поиск сотрудника"
             />

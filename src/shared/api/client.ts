@@ -150,7 +150,7 @@ async function baseRequest<T>(
       headers.set("Authorization", `Bearer ${token}`);
     } else if (!opt.retry) {
       optionsRef?.onAuthFailure?.();
-      throw new ApiError("No authentication token", 401);
+      throw new ApiError("Токен авторизации отсутствует", 401);
     }
   }
 
@@ -185,8 +185,8 @@ async function baseRequest<T>(
   try {
     res = await fetchImpl(url, fetchOptions);
   } catch {
-    throw new ApiError("Network error", 0, {
-      error: "Network error",
+    throw new ApiError("Ошибка сети", 0, {
+      error: "Ошибка сети",
       message: "Failed to fetch",
     });
   }
@@ -209,7 +209,7 @@ async function baseRequest<T>(
     } catch {}
 
     optionsRef?.onAuthFailure?.();
-    throw new ApiError("Unauthorized", 401);
+    throw new ApiError("Необходима авторизация", 401);
   }
 
   return handleResponse<T>(res);
@@ -274,7 +274,7 @@ export function initApiClient(options: ApiClientOptions): void {
 }
 
 export function api(): ApiClient {
-  if (!client) throw new Error("API not initialized");
+  if (!client) throw new Error("Клиент сервера не инициализирован");
   return client;
 }
 

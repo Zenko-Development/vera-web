@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type { Role } from "@/entities/role/model/types";
+import { getRoleDisplayName } from "@/entities/role/lib/role-presenters";
 import type { CreateUserRequest, User } from "@/entities/user/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { getUsersErrorMessage } from "../hooks/use-users";
@@ -95,7 +96,7 @@ export function UserForm({
 
     if (!form.lastName.trim()) nextErrors.lastName = "Укажите фамилию";
     if (!form.firstName.trim()) nextErrors.firstName = "Укажите имя";
-    if (!form.userName.trim()) nextErrors.userName = "Укажите логин";
+    if (!form.userName.trim()) nextErrors.userName = "Укажите имя пользователя";
     if (!form.roleId) nextErrors.roleId = "Выберите роль";
     if (form.password.length < 6) {
       nextErrors.password = "Минимум 6 символов";
@@ -205,7 +206,7 @@ export function UserForm({
             <FormSection number="2" title="Учётная запись" description="Данные для входа сотрудника">
               <FormField
                 id="userName"
-                label="Логин"
+                label="Имя пользователя"
                 value={form.userName}
                 error={errors.userName}
                 onChange={(value) => setField("userName", value)}
@@ -257,7 +258,7 @@ export function UserForm({
                       <SelectLabel>Доступные роли</SelectLabel>
                       {roles.map((role) => (
                         <SelectItem key={role.id} value={role.id}>
-                          {role.name}
+                          {getRoleDisplayName(role.name)}
                         </SelectItem>
                       ))}
                     </SelectGroup>

@@ -396,7 +396,7 @@ function HospitalFormFields({
                   placeholder="37.6173"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">Координаты необязательны, но нужны для расчёта расстояния и ETA. Если указываете одну координату, укажите и вторую.</p>
+              <p className="text-xs text-muted-foreground">Координаты необязательны, но нужны для расчёта расстояния и времени прибытия. Если указываете одну координату, укажите и вторую.</p>
             </FormSection>
 
             <FormSection number="3" title="Принимаемые направления" description="По каким заболеваниям центр доступен для выбора">

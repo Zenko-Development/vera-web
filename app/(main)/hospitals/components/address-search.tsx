@@ -126,7 +126,7 @@ export function AddressSearch({
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        Введите адрес и нажмите «Найти» или Enter. Данные ©{" "}
+        Введите адрес и нажмите «Найти» или клавишу ввода. Данные ©{" "}
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline underline-offset-2">
           OpenStreetMap
         </a>.

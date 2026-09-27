@@ -107,7 +107,7 @@ export function MapCanvas({
               <p className="font-semibold">Машина {arrival.car_number}</p>
               <p className="text-xs text-muted-foreground">Направляется в {arrival.hospital_name}</p>
               <p className="text-xs text-muted-foreground">
-                GPS {arrival.location_is_fresh ? "актуален" : "устарел"}
+                Геопозиция {arrival.location_is_fresh ? "актуальна" : "устарела"}
               </p>
             </div>
           </Popup>

@@ -25,7 +25,7 @@ export function UsersTable({ users, roleNames, onUserOpen }: UsersTableProps) {
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead>Пользователь</TableHead>
-            <TableHead>Логин</TableHead>
+            <TableHead>Имя пользователя</TableHead>
             <TableHead>Роль</TableHead>
             <TableHead>Статус</TableHead>
             <TableHead className="w-10">

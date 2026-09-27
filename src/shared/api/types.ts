@@ -65,12 +65,39 @@ export class ApiError extends Error {
 
   // ---------- DATA HELPERS ----------
   getMessage(): string {
-    return (
+    const message = (
       this.data?.message ||
       this.data?.error ||
       this.message ||
-      'Unknown error'
+      'Неизвестная ошибка'
     );
+
+    if (!/[A-Za-z]/.test(message)) return message;
+
+    const knownMessages: Record<string, string> = {
+      'invalid request': 'Некорректный запрос',
+      'invalid id': 'Некорректный идентификатор',
+      'unauthorized': 'Необходима авторизация',
+      'forbidden': 'Недостаточно прав для этого действия',
+      'not found': 'Запись не найдена',
+      'user not found': 'Пользователь не найден',
+      'hospital not found': 'Больница не найдена',
+      'hospital already exists': 'Такая больница уже существует',
+      "name can't be empty": 'Название не может быть пустым',
+      'permission not found': 'Право доступа не найдено',
+      'no rows in result set': 'Запись не найдена',
+      'internal server error': 'Внутренняя ошибка сервера',
+      'network error': 'Ошибка сети',
+      'no authentication token': 'Токен авторизации отсутствует',
+    };
+    const translated = knownMessages[message.trim().toLocaleLowerCase('en-US')];
+    if (translated) return translated;
+    if (this.status === 400 || this.status === 422) return 'Проверьте введённые данные';
+    if (this.status === 401) return 'Необходима авторизация';
+    if (this.status === 403) return 'Недостаточно прав для этого действия';
+    if (this.status === 404) return 'Запись не найдена';
+    if (this.status >= 500) return 'Сервер не смог выполнить запрос';
+    return 'Не удалось выполнить запрос';
   }
 
   getFieldErrors(): Record<string, string[]> | null {
