@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, Ambulance, Map, Plus, Search, Trash2, UsersRound, Wrench } from "lucide-react";
+import { Ambulance, Map, Plus, Search, Trash2, UsersRound, Wrench } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +30,7 @@ import { userApi } from "@/entities/user/api/user.api";
 import type { User } from "@/entities/user/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { ApiError } from "@/shared/api/types";
+import { HospitalArrivalsPanel } from "./hospital-arrivals-panel";
 import { ServiceAreaDialog } from "./service-area-dialog";
 import { ServiceAreasPanel } from "./service-areas-panel";
 
@@ -253,7 +253,7 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
       className="min-h-0 flex-1 [&_.bg-background]:bg-card [&_.bg-background]:text-card-foreground"
       viewportClassName="pb-6"
     >
-      {!selectedHospital && !loading ? <Empty text="Создайте или выберите больницу." /> : section === "arrivals" ? <section className="rounded-xl border bg-background"><header className="border-b p-4"><h2 className="font-semibold">Ожидаемые машины</h2><p className="text-sm text-muted-foreground">Данные обновляются автоматически каждые 15 секунд</p></header>{visibleArrivals.length ? <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">{visibleArrivals.map((arrival) => <Card key={arrival.emergency_call_id} size="sm"><CardHeader><CardTitle>{arrival.car_number}</CardTitle><CardDescription>{arrival.hospital_name}</CardDescription></CardHeader><CardContent className="space-y-1 text-sm"><p>ETA: <strong>{formatDate(arrival.estimated_arrival_at)}</strong></p><p>Расстояние: {Math.round(arrival.distance_meters / 100) / 10} км</p><p className={arrival.location_is_fresh ? "text-emerald-700 dark:text-emerald-400" : "font-medium text-destructive"}>{arrival.location_is_fresh ? "GPS актуален" : "GPS устарел"}</p></CardContent></Card>)}</div> : <Empty text="Активных прибытий сейчас нет." />}</section>
+      {!selectedHospital && !loading ? <Empty text="Создайте или выберите больницу." /> : section === "arrivals" ? <HospitalArrivalsPanel hospital={selectedHospital} arrivals={visibleArrivals} />
       : section === "resources" ? <div className="grid gap-4 xl:grid-cols-2"><ResourceTable title="Оборудование" items={equipment} names={equipmentNames} busy={busy} onAdd={() => openResource("equipment")} onStatus={(id, status) => void changeStatus("equipment", id, status)} onRemove={(id) => void removeResource("equipment", id)} /><ResourceTable title="Операционные" items={rooms} names={operatingNames} busy={busy} onAdd={() => openResource("operating")} onStatus={(id, status) => void changeStatus("operating", id, status)} onRemove={(id) => void removeResource("operating", id)} /></div>
       : section === "staff" ? <section className="rounded-xl border bg-background"><header className="flex flex-wrap items-center gap-2 border-b p-4"><div className="mr-auto"><h2 className="font-semibold">Назначенные сотрудники</h2><p className="text-sm text-muted-foreground">Сотрудник может быть назначен в несколько больниц</p></div><StaffUserSelect users={users} assignedIds={staffIds} value={staffUserId} onValueChange={setStaffUserId} disabled={busy} /><Button size="sm" onClick={() => void assignStaff()} disabled={!staffUserId || busy}><Plus />Назначить</Button></header>{staffIds.length ? <Table><TableBody>{staffIds.map((id) => <TableRow key={id}><TableCell className="font-medium">{userNames[id] ?? id}</TableCell><TableCell className="w-16"><Button size="icon-sm" variant="ghost" aria-label={`Удалить назначение ${userNames[id] ?? id}`} onClick={() => void revokeStaff(id)} disabled={busy}><Trash2 /></Button></TableCell></TableRow>)}</TableBody></Table> : <Empty text="Сотрудники не назначены." />}</section>
       : <ServiceAreasPanel areas={hospitalAreas} hospital={selectedHospital} busy={busy} onCreate={() => openArea("new")} onEdit={openArea} onRemove={(area) => void removeArea(area)} />}
@@ -361,4 +361,3 @@ function ResourceTable({ title, items, names, busy, onAdd, onStatus, onRemove }:
   return <section className="rounded-xl border bg-background"><header className="flex items-center justify-between border-b p-4"><h2 className="font-semibold">{title}</h2><Button size="sm" onClick={onAdd}><Plus />Добавить</Button></header>{items.length ? <Table><TableHeader><TableRow><TableHead>Метка</TableHead><TableHead>Тип</TableHead><TableHead>Статус</TableHead><TableHead className="w-12" /></TableRow></TableHeader><TableBody>{items.map((item) => { const typeId = "equipment_id" in item ? item.equipment_id : item.operating_id; return <TableRow key={item.id}><TableCell className="font-medium">{item.label}</TableCell><TableCell>{names[typeId] ?? ("equipment_name" in item ? item.equipment_name : item.operating_name)}</TableCell><TableCell><Select value={item.status} onValueChange={(value) => onStatus(item.id, value as HospitalResourceStatus)} disabled={busy}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(resourceStatusNames).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></TableCell><TableCell><Button size="icon-sm" variant="ghost" onClick={() => onRemove(item.id)} disabled={busy}><Trash2 /></Button></TableCell></TableRow>; })}</TableBody></Table> : <Empty text="Ресурсы не добавлены." />}</section>;
 }
 function Empty({ text }: { text: string }) { return <p className="m-4 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{text}</p>; }
-function formatDate(value: string) { return new Date(value).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }

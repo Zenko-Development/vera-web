@@ -42,7 +42,7 @@ export const HeaderRight = () => {
           {timeString}
           <LiveClockIcon time={currentTime} />
         </TooltipTrigger>
-        <TooltipContent side="bottom">
+        <TooltipContent side="bottom" sideOffset={8}>
           <p>Время</p>
         </TooltipContent>
       </Tooltip>

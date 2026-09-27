@@ -76,8 +76,8 @@ export function ThemeToggle() {
       >
         <MorphIcon icon={isDark ? Sun : Moon} size={16} />
       </TooltipTrigger>
-      <TooltipContent side="bottom">
-        <p>{isDark ? "Светлая тема" : "Тёмная тема"}</p>
+      <TooltipContent side="bottom" sideOffset={8}>
+        <p>Сменить тему</p>
       </TooltipContent>
     </Tooltip>
   );
