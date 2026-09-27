@@ -221,10 +221,7 @@ export function CatalogsSettings() {
 
             return (
               <section key={itemKind} className="overflow-hidden rounded-xl border">
-                <header className="flex items-center gap-3 border-b p-4">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="size-4" />
-                  </span>
+                <header className="flex items-center gap-3 border-b p-4"> 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium">{itemMeta.title}</h3>

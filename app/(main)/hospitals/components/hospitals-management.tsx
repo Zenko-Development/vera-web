@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import type { Hospital } from "@/entities/hospital/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { useUserPreference } from "@/features/preferences/use-user-preference";
 import { HospitalForm } from "./hospital-form";
 import { HospitalsGrid, HospitalsTable } from "./hospitals-list";
 import {
@@ -19,6 +20,9 @@ import {
   getHospitalsErrorMessage,
   useHospitals,
 } from "../hooks/use-hospitals";
+
+const isHospitalsViewMode = (value: unknown): value is HospitalsViewMode =>
+  value === "grid" || value === "table";
 
 export function HospitalsManagement() {
   const router = useRouter();
@@ -37,7 +41,11 @@ export function HospitalsManagement() {
   const [query, setQuery] = useState("");
   const [facilityTypeId, setFacilityTypeId] = useState("all");
   const [sort, setSort] = useState<HospitalsSort>("name-asc");
-  const [viewMode, setViewMode] = useState<HospitalsViewMode>("grid");
+  const [viewMode, setViewMode] = useUserPreference<HospitalsViewMode>(
+    "hospitals:view-mode",
+    "grid",
+    isHospitalsViewMode,
+  );
   const [formTarget, setFormTarget] = useState<"new" | null>(null);
 
   const facilityTypeNames = useMemo(

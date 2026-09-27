@@ -7,15 +7,14 @@ import {
   Activity,
   Ambulance,
   ArrowRight,
+  ArrowUpRight,
   Clock3,
   Hospital,
   LoaderCircle,
-  RefreshCw,
   Tablet,
   UsersRound,
 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -24,7 +23,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ScrollFade } from "@/components/ui/scroll-fade";
 import { ambulanceVehicleApi } from "@/entities/ambulance-vehicle/api/ambulance-vehicle.api";
 import type { AmbulanceVehicle } from "@/entities/ambulance-vehicle/model/types";
 import { analyticsEmergencyCallApi } from "@/entities/analytics-emergency-call/api/analytics-emergency-call.api";
@@ -145,26 +143,31 @@ export function Dashboard() {
   );
 
   return (
-    <ScrollFade
-      className="min-h-0 flex-1"
-      viewportClassName="py-3 pb-6"
-    >
-      <main>
-      <div className="mb-3 flex justify-end">
-        <div className="flex items-center gap-3">
-          {updatedAt && (
-            <span className="text-xs text-muted-foreground">
-              Обновлено {updatedAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-            </span>
-          )}
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={loading ? "animate-spin" : ""} />
-            Обновить
-          </Button>
-        </div>
+    <main className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_clamp(15rem,24vw,20rem)] gap-3 overflow-hidden">
+      <div className="grid min-h-0 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] gap-3">
+        <section
+          className="relative isolate min-h-0 overflow-hidden rounded-xl border bg-card text-card-foreground"
+          aria-label="Карта сосудистых центров и активных машин"
+        >
+          <DashboardMap
+            hospitals={mappedHospitals}
+            arrivals={data.arrivals ?? []}
+          />
+        </section>
+
+        <section
+          className="grid min-h-0 grid-cols-2 gap-3"
+          aria-label="Оперативная информация"
+        >
+          <ArrivalsCard arrivals={data.arrivals} loading={loading && !updatedAt} />
+          <CallsCard calls={data.calls} loading={loading && !updatedAt} />
+        </section>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Ключевые показатели">
+      <aside
+        className="grid min-h-0 grid-rows-4 gap-3"
+        aria-label="Ключевые показатели"
+      >
         <MetricCard
           href="/users"
           icon={UsersRound}
@@ -197,61 +200,46 @@ export function Dashboard() {
           description="учреждений в системе"
           loading={loading && !updatedAt}
         />
-      </section>
-
-      <section
-        className="relative isolate mt-3 h-80 overflow-hidden rounded-xl border bg-card text-card-foreground xl:h-96"
-        aria-label="Карта сосудистых центров и активных машин"
-      >
-        <DashboardMap
-          hospitals={mappedHospitals}
-          arrivals={data.arrivals ?? []}
-        />
-      </section>
-
-      <section className="mt-3 grid min-h-80 gap-3 xl:grid-cols-2" aria-label="Оперативная информация">
-        <ArrivalsCard arrivals={data.arrivals} loading={loading && !updatedAt} />
-        <CallsCard calls={data.calls} loading={loading && !updatedAt} />
-      </section>
-      </main>
-    </ScrollFade>
+      </aside>
+    </main>
   );
 }
 
 function MetricCard({ href, icon: Icon, title, value, description, loading }: { href: string; icon: LucideIcon; title: string; value: string | null; description: string; loading: boolean }) {
   return (
-    <Link href={href} className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      <Card className="h-full gap-4 transition group-hover:-translate-y-0.5 group-hover:shadow-md">
+    <Link href={href} className="group min-h-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Card size="sm" className="relative h-full min-h-0 justify-between gap-2 ">
         <CardHeader>
-          <CardTitle className="text-sm text-muted-foreground">{title}</CardTitle>
-          <CardAction className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+          <CardTitle className="truncate text-muted-foreground">{title}</CardTitle>
+          <CardAction className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ">
             <Icon className="size-4" />
           </CardAction>
         </CardHeader>
-        <CardContent className="gap-1">
-          {loading ? <LoaderCircle className="my-1 size-6 animate-spin text-muted-foreground" /> : <p className="text-3xl font-semibold tracking-tight">{value ?? "—"}</p>}
-          <p className="text-xs text-muted-foreground">{value === null && !loading ? "Нет доступа к данным" : description}</p>
+        <CardContent className="gap-2">
+          {loading ? <LoaderCircle className="my-1 size-5 animate-spin text-muted-foreground" /> : <p className="text-4xl font-semibold tracking-tight">{value ?? "—"}</p>}
+          <p className="truncate text-xs text-muted-foreground">{value === null && !loading ? "Нет доступа к данным" : description}</p>
         </CardContent>
+        <ArrowUpRight strokeWidth={1} className="absolute right-3 bottom-3 size-5 shrink-0 rotate-45 text-muted-foreground opacity-0 transition group-hover:rotate-0 group-hover:opacity-100" />
       </Card>
     </Link>
   );
 }
 
 function ArrivalsCard({ arrivals, loading }: { arrivals: HospitalArrival[] | null; loading: boolean }) {
-  const visible = arrivals?.slice(0, 5) ?? [];
+  const visible = arrivals?.slice(0, 2) ?? [];
   return (
-    <Card className="gap-4">
+    <Card size="sm" className="min-h-0 gap-3">
       <CardHeader className="border-b">
-        <CardTitle className="flex items-center gap-2"><Clock3 className="size-4" />Ожидаемые прибытия</CardTitle>
-        <CardDescription>Машины, направляющиеся в сосудистые центры</CardDescription>
+        <CardTitle className="flex items-center gap-2 truncate"><Clock3 className="size-4 shrink-0" /><span className="truncate">Ожидаемые прибытия</span></CardTitle>
+        <CardDescription className="truncate">Машины, направляющиеся в центры</CardDescription>
         <CardAction><SectionLink href="/map" label="Открыть карту" /></CardAction>
       </CardHeader>
-      <CardContent className="gap-0">
+      <CardContent className="min-h-0 flex-1 gap-0 overflow-hidden">
         {loading ? <LoadingRows /> : arrivals === null ? <EmptyState text="Нет доступа к данным прибытий." /> : visible.length === 0 ? <EmptyState text="Сейчас нет ожидаемых машин." /> : (
           <div className="divide-y">
             {visible.map((arrival) => (
-              <div key={arrival.emergency_call_destination_id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted"><Ambulance className="size-4" /></span>
+              <div key={arrival.emergency_call_destination_id} className="flex items-center gap-2 py-2 first:pt-0 last:pb-0">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted"><Ambulance className="size-4" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{arrival.car_number} · {arrival.hospital_name}</p>
                   <p className="truncate text-xs text-muted-foreground">{arrival.hospital_address}</p>
@@ -270,19 +258,20 @@ function ArrivalsCard({ arrivals, loading }: { arrivals: HospitalArrival[] | nul
 }
 
 function CallsCard({ calls, loading }: { calls: AnalyticsEmergencyCall[] | null; loading: boolean }) {
+  const visible = calls?.slice(0, 2) ?? [];
   return (
-    <Card className="gap-4">
+    <Card size="sm" className="min-h-0 gap-3">
       <CardHeader className="border-b">
-        <CardTitle className="flex items-center gap-2"><Activity className="size-4" />Последние завершённые вызовы</CardTitle>
-        <CardDescription>Недавние результаты прохождения форм</CardDescription>
+        <CardTitle className="flex items-center gap-2 truncate"><Activity className="size-4 shrink-0" /><span className="truncate">Последние вызовы</span></CardTitle>
+        <CardDescription className="truncate">Недавние результаты прохождения форм</CardDescription>
         <CardAction><SectionLink href="/analytics" label="Вся аналитика" /></CardAction>
       </CardHeader>
-      <CardContent className="gap-0">
-        {loading ? <LoadingRows /> : calls === null ? <EmptyState text="Нет доступа к аналитике вызовов." /> : calls.length === 0 ? <EmptyState text="Завершённых вызовов пока нет." /> : (
+      <CardContent className="min-h-0 flex-1 gap-0 overflow-hidden">
+        {loading ? <LoadingRows /> : calls === null ? <EmptyState text="Нет доступа к аналитике вызовов." /> : visible.length === 0 ? <EmptyState text="Завершённых вызовов пока нет." /> : (
           <div className="divide-y">
-            {calls.map((call) => (
-              <div key={call.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted"><Activity className="size-4" /></span>
+            {visible.map((call) => (
+              <div key={call.id} className="flex items-center gap-2 py-2 first:pt-0 last:pb-0">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted"><Activity className="size-4" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{call.vehicle.car_number} · {call.checklist_run.result.title}</p>
                   <p className="truncate text-xs text-muted-foreground">{call.destination?.selected_hospital?.name ?? "Больница не выбрана"}</p>
@@ -302,11 +291,11 @@ function SectionLink({ href, label }: { href: string; label: string }) {
 }
 
 function LoadingRows() {
-  return <div className="flex min-h-44 items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />Загрузка данных…</div>;
+  return <div className="flex h-full min-h-0 items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />Загрузка данных…</div>;
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="flex min-h-44 items-center justify-center rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{text}</div>;
+  return <div className="flex h-full min-h-0 items-center justify-center rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">{text}</div>;
 }
 
 function formatDuration(seconds: number): string {

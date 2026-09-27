@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import type { User } from "@/entities/user/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { useUserPreference } from "@/features/preferences/use-user-preference";
 import { getUserFullName, getUserSearchValue } from "../lib/user-presenters";
 import { getUsersErrorMessage, useUsers } from "../hooks/use-users";
 import { UserDetailsDialog } from "./user-details-dialog";
@@ -19,6 +20,9 @@ import {
   type UsersSort,
   type UsersViewMode,
 } from "./users-toolbar";
+
+const isUsersViewMode = (value: unknown): value is UsersViewMode =>
+  value === "grid" || value === "table";
 
 export function UsersManagement() {
   const showAlert = useAlert();
@@ -37,7 +41,11 @@ export function UsersManagement() {
   const [accessFilter, setAccessFilter] =
     useState<UsersAccessFilter>("all");
   const [sort, setSort] = useState<UsersSort>("name-asc");
-  const [viewMode, setViewMode] = useState<UsersViewMode>("grid");
+  const [viewMode, setViewMode] = useUserPreference<UsersViewMode>(
+    "users:view-mode",
+    "grid",
+    isUsersViewMode,
+  );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<User["id"] | null>(null);
 
@@ -178,7 +186,7 @@ function UsersLoading({ viewMode }: { viewMode: UsersViewMode }) {
   if (viewMode === "table") {
     return (
       <div className="overflow-hidden rounded-xl bg-card text-card-foreground ring-1 ring-border">
-        {[0, 1, 2, 3, 4].map((item) => (
+        {[0, 1, 2, 3, 4,5,6,7,8,9,10,11].map((item) => (
           <div key={item} className="flex items-center gap-3 border-b p-4 last:border-0">
             <div className="size-8 animate-pulse rounded-full bg-muted" />
             <div className="h-4 w-48 animate-pulse rounded bg-muted" />
