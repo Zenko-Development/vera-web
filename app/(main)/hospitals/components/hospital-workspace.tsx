@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Building2, LoaderCircle, MapPin, Pencil, Phone, Stethoscope, Trash2 } from "lucide-react";
+import { ArrowLeft, Info, LoaderCircle, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HospitalOperations } from "../../operations/components/hospital-operations";
 import { HospitalForm } from "./hospital-form";
 import { getHospitalsErrorMessage, useHospitals } from "../hooks/use-hospitals";
@@ -38,10 +39,16 @@ export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
   useEffect(() => {
     if (!hospital) return;
     const timer = window.setTimeout(() => {
-      void loadHospitalSicknesses(hospital.id).catch(() => undefined);
+      void loadHospitalSicknesses(hospital.id).catch((cause) => {
+        showAlert({
+          title: "Не удалось загрузить направления центра",
+          description: getHospitalsErrorMessage(cause),
+          type: "error",
+        });
+      });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [hospital, loadHospitalSicknesses]);
+  }, [hospital, loadHospitalSicknesses, showAlert]);
 
   const remove = async () => {
     if (!hospital) return;
@@ -65,31 +72,54 @@ export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
     return <div className="flex h-full flex-col"><div className="flex h-12 items-center"><Button nativeButton={false} render={<Link href="/hospitals" />} variant="ghost" size="sm"><ArrowLeft />К списку центров</Button></div><Alert variant="destructive" className="mt-3"><AlertTitle>Центр недоступен</AlertTitle><AlertDescription>{error ?? "Сосудистый центр не найден."}</AlertDescription></Alert></div>;
   }
 
-  const hasCoordinates = Boolean(hospital.latitude || hospital.longitude);
-
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-3 pr-28">
+      <header className="flex h-9 shrink-0 items-center gap-3 pr-34">
         <Button nativeButton={false} render={<Link href="/hospitals" />} variant="ghost" size="icon-sm" aria-label="К списку центров"><ArrowLeft /></Button>
         <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight">{hospital.name}</h1>
-        <span className="hidden rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary sm:inline">{facilityType?.name ?? "Тип не указан"}</span>
         <div className="ml-auto flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger
+              delay={0}
+              render={
+                <button
+                  type="button"
+                  className="flex size-8 items-center justify-center rounded-md border border-input bg-background text-foreground shadow-xs transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Информация о центре"
+                />
+              }
+            >
+              <Info className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              align="end"
+              className="block w-80 max-w-[calc(100vw-2rem)] space-y-3 p-4 text-left"
+            >
+              {hospital.description && (
+                <p className="leading-relaxed opacity-80">{hospital.description}</p>
+              )}
+              <dl className="grid gap-2">
+                <HospitalDetail label="Тип" value={facilityType?.name ?? "Не указан"} />
+                <HospitalDetail label="Адрес" value={hospital.address || "Не указан"} />
+                <HospitalDetail label="Телефон" value={hospital.phone || "Не указан"} />
+                <HospitalDetail
+                  label="Направления"
+                  value={
+                    linkedSicknesses.length
+                      ? linkedSicknesses.map((item) => item.name).join(", ")
+                      : "Не назначены"
+                  }
+                />
+              </dl>
+            </TooltipContent>
+          </Tooltip>
           <Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil />Изменить</Button>
           <Button size="icon-sm" variant="ghost" aria-label="Удалить центр" onClick={() => setDeleteOpen(true)}><Trash2 /></Button>
         </div>
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto pb-6 pt-3">
-        <section className="rounded-xl border bg-card p-4 text-card-foreground">
-          {hospital.description && <p className="mb-4 text-sm text-muted-foreground">{hospital.description}</p>}
-          <div className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-            <Info icon={MapPin} label="Адрес" value={hospital.address || "Не указан"} />
-            <Info icon={Phone} label="Телефон" value={hospital.phone || "Не указан"} />
-            <Info icon={Building2} label="Координаты" value={hasCoordinates ? `${hospital.latitude.toFixed(5)}, ${hospital.longitude.toFixed(5)}` : "Не указаны"} />
-            <Info icon={Stethoscope} label="Направления" value={linkedSicknesses.length ? linkedSicknesses.map((item) => item.name).join(", ") : "Не назначены"} />
-          </div>
-        </section>
-
         <HospitalOperations fixedHospitalId={hospital.id} />
       </main>
 
@@ -110,6 +140,11 @@ export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
   );
 }
 
-function Info({ icon: Icon, label, value }: { icon: typeof MapPin; label: string; value: string }) {
-  return <div className="flex min-w-0 items-start gap-2"><Icon className="mt-0.5 size-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-0.5 truncate font-medium" title={value}>{value}</p></div></div>;
+function HospitalDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-[11px] opacity-60">{label}</dt>
+      <dd className="mt-0.5 leading-snug">{value}</dd>
+    </div>
+  );
 }

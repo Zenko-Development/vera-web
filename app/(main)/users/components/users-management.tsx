@@ -47,6 +47,7 @@ export function UsersManagement() {
     isUsersViewMode,
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isUserDetailsOpen, setIsUserDetailsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<User["id"] | null>(null);
 
   const roleNames = useMemo(
@@ -94,6 +95,11 @@ export function UsersManagement() {
     setQuery("");
     setRoleId("all");
     setAccessFilter("all");
+  };
+
+  const openUserDetails = (user: User) => {
+    setSelectedUserId(user.id);
+    setIsUserDetailsOpen(true);
   };
 
   const handleRefresh = async () => {
@@ -152,13 +158,13 @@ export function UsersManagement() {
           <UsersGrid
             users={visibleUsers}
             roleNames={roleNames}
-            onUserOpen={(user) => setSelectedUserId(user.id)}
+            onUserOpen={openUserDetails}
           />
         ) : (
           <UsersTable
             users={visibleUsers}
             roleNames={roleNames}
-            onUserOpen={(user) => setSelectedUserId(user.id)}
+            onUserOpen={openUserDetails}
           />
         )}
       </ScrollFade>
@@ -170,11 +176,13 @@ export function UsersManagement() {
         onCreate={createUser}
       />
       <UserDetailsDialog
+        open={isUserDetailsOpen}
         user={selectedUser}
         roles={roles}
         onAccessStatusChange={updateAccessStatus}
         onRoleChange={updateRole}
-        onOpenChange={(open) => {
+        onOpenChange={setIsUserDetailsOpen}
+        onOpenChangeComplete={(open) => {
           if (!open) setSelectedUserId(null);
         }}
       />

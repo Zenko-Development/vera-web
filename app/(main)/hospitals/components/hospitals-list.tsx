@@ -42,9 +42,6 @@ export function HospitalsGrid({
                 {facilityTypeNames[hospital.facility_type_id] ?? "Тип не найден"}
               </p>
             </div>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Building2 className="size-5" />
-            </span>
           </div>
 
           <div className="mt-6 flex items-end justify-between gap-3">

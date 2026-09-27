@@ -11,6 +11,7 @@ import {
   Clock3,
   Hospital,
   LoaderCircle,
+  RotateCcwClock,
   Tablet,
   UsersRound,
 } from "lucide-react";
@@ -230,7 +231,7 @@ function ArrivalsCard({ arrivals, loading }: { arrivals: HospitalArrival[] | nul
   return (
     <Card size="sm" className="min-h-0 gap-3">
       <CardHeader className="border-b">
-        <CardTitle className="flex items-center gap-2 truncate"><Clock3 className="size-4 shrink-0" /><span className="truncate">Ожидаемые прибытия</span></CardTitle>
+        <CardTitle className="flex items-center gap-2 truncate"><Ambulance className="size-4 shrink-0" /><span className="truncate">Ожидаемые прибытия</span></CardTitle>
         <CardDescription className="truncate">Машины, направляющиеся в центры</CardDescription>
         <CardAction><SectionLink href="/map" label="Открыть карту" /></CardAction>
       </CardHeader>
@@ -262,7 +263,7 @@ function CallsCard({ calls, loading }: { calls: AnalyticsEmergencyCall[] | null;
   return (
     <Card size="sm" className="min-h-0 gap-3">
       <CardHeader className="border-b">
-        <CardTitle className="flex items-center gap-2 truncate"><Activity className="size-4 shrink-0" /><span className="truncate">Последние вызовы</span></CardTitle>
+        <CardTitle className="flex items-center gap-2 truncate"><RotateCcwClock className="size-4 shrink-0" /><span className="truncate">Последние вызовы</span></CardTitle>
         <CardDescription className="truncate">Недавние результаты прохождения форм</CardDescription>
         <CardAction><SectionLink href="/analytics" label="Вся аналитика" /></CardAction>
       </CardHeader>

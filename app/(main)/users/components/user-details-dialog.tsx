@@ -30,6 +30,7 @@ import { getUserFullName, getUserInitials } from "../lib/user-presenters";
 import { AccessBadge } from "./users-grid";
 
 type UserDetailsDialogProps = {
+  open: boolean;
   user: User | null;
   roles: Role[];
   onAccessStatusChange: (
@@ -38,14 +39,17 @@ type UserDetailsDialogProps = {
   ) => Promise<User>;
   onRoleChange: (id: User["id"], roleId: Role["id"]) => Promise<User>;
   onOpenChange: (open: boolean) => void;
+  onOpenChangeComplete: (open: boolean) => void;
 };
 
 export function UserDetailsDialog({
+  open,
   user,
   roles,
   onAccessStatusChange,
   onRoleChange,
   onOpenChange,
+  onOpenChangeComplete,
 }: UserDetailsDialogProps) {
   const showAlert = useAlert();
   const [isUpdatingAccess, setIsUpdatingAccess] = useState(false);
@@ -102,11 +106,12 @@ export function UserDetailsDialog({
 
   return (
     <Dialog
-      open={user !== null}
+      open={open}
       onOpenChange={(open) => {
         if (!open && isUpdating) return;
         onOpenChange(open);
       }}
+      onOpenChangeComplete={onOpenChangeComplete}
     >
       <DialogContent>
         <DialogHeader>
