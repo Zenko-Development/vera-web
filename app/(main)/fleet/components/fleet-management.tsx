@@ -183,7 +183,7 @@ function SummaryStat({ value, label, tone = "primary" }: { value: string | null;
 }
 
 function VehicleStatus({ status }: { status: AmbulanceVehicleStatus }) {
-  const className = status === "active" ? "bg-emerald-50 text-emerald-700" : status === "maintenance" ? "bg-amber-50 text-amber-700" : "bg-muted text-muted-foreground";
+  const className = status === "active" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : status === "maintenance" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-muted text-muted-foreground";
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${className}`}>{statusNames[status]}</span>;
 }
 

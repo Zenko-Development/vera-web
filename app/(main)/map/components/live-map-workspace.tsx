@@ -23,7 +23,7 @@ const LiveMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full items-center justify-center bg-white text-muted-foreground">
+      <div className="flex h-full items-center justify-center bg-background text-muted-foreground">
         <LoaderCircle className="size-4 animate-spin" />
         <span className="sr-only">Загружаем карту</span>
       </div>
@@ -102,7 +102,7 @@ export function LiveMapWorkspace() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 pb-5 pt-3">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-white p-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-background p-2">
         <Button
           type="button"
           size="sm"
@@ -149,7 +149,7 @@ export function LiveMapWorkspace() {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border bg-white lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border bg-background lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="relative isolate min-h-96 overflow-hidden lg:min-h-0">
           <LiveMap
             hospitals={showHospitals ? mappedHospitals : []}
@@ -164,8 +164,8 @@ export function LiveMapWorkspace() {
           <ScrollFade
             className="h-full"
             viewportClassName="p-3"
-            fadeClassName="from-white"
-            edgeClassName="bg-white"
+            fadeClassName="from-background"
+            edgeClassName="bg-background"
           >
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-medium">Ожидаемые прибытия</h2>

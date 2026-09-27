@@ -65,7 +65,7 @@ export function UsersToolbar({
           size="icon-sm"
           aria-label="Карточки"
           aria-pressed={viewMode === "grid"}
-          className="aria-pressed:bg-black aria-pressed:text-primary-foreground"
+          className="aria-pressed:bg-foreground aria-pressed:text-background"
           onClick={() => onViewModeChange("grid")}
         >
           <Grid2X2 />
@@ -76,13 +76,13 @@ export function UsersToolbar({
           size="icon-sm"
           aria-label="Таблица"
           aria-pressed={viewMode === "table"}
-          className="aria-pressed:bg-black aria-pressed:text-primary-foreground"
+          className="aria-pressed:bg-foreground aria-pressed:text-background"
           onClick={() => onViewModeChange("table")}
         >
           <List />
         </Button>
       </ButtonGroup>
-      <InputGroup className="min-w-56 flex-1 shadow-none bg-white h-8">
+      <InputGroup className="h-8 min-w-56 flex-1 bg-background shadow-none">
         <InputGroupAddon>
           <Search />
         </InputGroupAddon>
@@ -98,7 +98,7 @@ export function UsersToolbar({
         value={roleId}
         onValueChange={(value) => onRoleChange(value ?? "all")}
       >
-        <SelectTrigger className="w-44 bg-white shadow-none" size="sm">
+        <SelectTrigger className="w-44 bg-background shadow-none" size="sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent align="start">
@@ -120,7 +120,7 @@ export function UsersToolbar({
           onAccessFilterChange((value ?? "all") as UsersAccessFilter)
         }
       >
-        <SelectTrigger className="w-40 bg-white shadow-none" size="sm">
+        <SelectTrigger className="w-40 bg-background shadow-none" size="sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent align="start">
@@ -139,7 +139,7 @@ export function UsersToolbar({
           onSortChange((value ?? "name-asc") as UsersSort)
         }
       >
-        <SelectTrigger className="w-48 bg-white shadow-none" size="sm">
+        <SelectTrigger className="w-48 bg-background shadow-none" size="sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent align="start">

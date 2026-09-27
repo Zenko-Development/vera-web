@@ -355,7 +355,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-white ring-1 ring-black/5 md:flex-row">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-background ring-1 ring-border md:flex-row">
       <div
         className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b p-2 md:min-w-40 md:flex-col md:border-r md:border-b-0"
         role="tablist"
@@ -366,7 +366,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
           role="tab"
           aria-selected={activeTab === "general"}
           onClick={() => setActiveTab("general")}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 aria-selected:bg-primary aria-selected:text-primary-foreground"
+          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
           <Settings2 className="size-4" />
           Общее
@@ -376,7 +376,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
           role="tab"
           aria-selected={activeTab === "gps"}
           onClick={() => setActiveTab("gps")}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 aria-selected:bg-primary aria-selected:text-primary-foreground"
+          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
           <Satellite className="size-4" />
           GPS и ETA
@@ -386,7 +386,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
           role="tab"
           aria-selected={activeTab === "catalogs"}
           onClick={() => setActiveTab("catalogs")}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 aria-selected:bg-primary aria-selected:text-primary-foreground"
+          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
           <Library className="size-4" />
           Справочники
@@ -396,7 +396,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
           role="tab"
           aria-selected={activeTab === "access"}
           onClick={() => setActiveTab("access")}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-gray-100 aria-selected:bg-primary aria-selected:text-primary-foreground"
+          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
           <ShieldCheck className="size-4" />
           Роли и доступ
@@ -453,7 +453,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
           </div>
 
           {loadError && !isLoading && (
-            <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               <span>Не удалось загрузить роли: {loadError}</span>
               <Button variant="outline" size="sm" onClick={handleRefresh}>
                 Повторить
@@ -487,7 +487,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
                             onClick={() => handleOpenRole(role)}
                             className="flex w-full items-center gap-4 px-4 py-4 text-left outline-none transition focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                           >
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-gray-50 text-muted-foreground transition group-hover:text-foreground">
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-muted-foreground transition group-hover:text-foreground">
                               <ShieldCheck className="size-4" />
                             </span>
                             <span className="min-w-0 flex-1">
@@ -498,7 +498,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
                                 Настройка доступа для пользователей этой роли
                               </span>
                             </span>
-                            <span className="hidden rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-muted-foreground sm:inline-flex">
+                            <span className="hidden rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground sm:inline-flex">
                               {permissionCount} {permissionCount === 1 ? "право" : "прав"}
                             </span>
                             <ChevronRight className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -542,7 +542,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
             {isRolePermissionsLoading ? (
               <LoadingBlock label="Загружаем права роли" />
             ) : roleDialogError ? (
-              <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-red-200 bg-red-50 p-5 text-center text-sm text-red-700">
+              <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-destructive/30 bg-destructive/10 p-5 text-center text-sm text-destructive">
                 <p>Не удалось загрузить права: {roleDialogError}</p>
                 {selectedRole && (
                   <Button
@@ -575,7 +575,7 @@ export function SettingsPanel({ initialTab = "general" }: { initialTab?: Setting
                   return (
                     <div
                       key={permission.id}
-                      className={`flex items-start gap-3 px-4 py-3 transition hover:bg-gray-50 ${
+                      className={`flex items-start gap-3 px-4 py-3 transition hover:bg-muted/50 ${
                         index > 0 ? "border-t" : ""
                       }`}
                     >
@@ -811,7 +811,7 @@ function GpsSettings() {
       />
 
       {policyError ? (
-        <p className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{policyError}</p>
+        <p className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{policyError}</p>
       ) : !policy ? (
         <LoadingBlock label="Загружаем GPS-политику" />
       ) : (

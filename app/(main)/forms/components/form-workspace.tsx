@@ -273,7 +273,7 @@ export function FormWorkspace({
                   size="sm"
                   className={
                     selectedVersion.status === "published"
-                      ? "min-w-36 border-green-200 bg-green-50 text-green-700"
+                      ? "min-w-36 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                       : selectedVersion.status === "archived"
                         ? "min-w-36 bg-muted text-muted-foreground"
                         : "min-w-36 border-blue-200 bg-blue-50 text-blue-700"
@@ -432,9 +432,9 @@ export function FormWorkspace({
               {publicationChecks.map((check) => (
                 <button key={check.label} type="button" disabled={check.valid} onClick={() => { setStep(check.section); setReadinessOpen(false); }} className="flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm transition enabled:hover:border-foreground/30 enabled:hover:bg-muted/50">
                   {check.valid ? (
-                    <CircleCheck className="mt-0.5 size-4 shrink-0 text-green-600" />
+                    <CircleCheck className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                    <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   )}
                   <span className="flex-1">{check.label}</span>
                   {!check.valid && <span className="text-xs text-muted-foreground">Перейти</span>}

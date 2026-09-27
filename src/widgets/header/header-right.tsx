@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Clock } from "lucide-react";
+import { Clock, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import {
   Tooltip,
   TooltipContent,
@@ -9,7 +10,9 @@ import {
 } from "@/components/ui/tooltip";
 
 export const HeaderRight = () => {
+  const { resolvedTheme, setTheme } = useTheme();
   const [timeString, setTimeString] = useState("--:--");
+  const isDark = resolvedTheme === "dark";
 
   useEffect(() => {
     const updateTime = () => {
@@ -29,7 +32,25 @@ export const HeaderRight = () => {
   }, []);
 
   return (
-    <div className="absolute top-3 right-3 z-10 flex">
+    <div className="absolute top-3 right-3 z-10 flex items-center gap-1">
+      <Tooltip>
+        <TooltipTrigger
+          delay={0}
+          render={
+            <button
+              type="button"
+              aria-label={isDark ? "Включить светлую тему" : "Включить тёмную тему"}
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              className="flex size-9 items-center justify-center rounded-full border bg-background/90 text-foreground outline-none backdrop-blur-sm transition hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          }
+        >
+          {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>{isDark ? "Светлая тема" : "Тёмная тема"}</p>
+        </TooltipContent>
+      </Tooltip>
       <Tooltip>
         <TooltipTrigger
           delay={0}
@@ -37,7 +58,7 @@ export const HeaderRight = () => {
             <time
               dateTime={timeString}
               tabIndex={0}
-              className="flex h-9 items-center gap-2 rounded-full bg-white px-3 text-sm font-medium text-black ring-1 ring-black/5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-9 items-center gap-2 rounded-full border bg-background/90 px-3 text-sm font-medium text-foreground outline-none backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-ring"
             />
           }
         >

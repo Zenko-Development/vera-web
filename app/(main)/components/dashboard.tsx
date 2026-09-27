@@ -200,7 +200,7 @@ export function Dashboard() {
       </section>
 
       <section
-        className="relative isolate mt-3 h-80 overflow-hidden rounded-xl border bg-white xl:h-96"
+        className="relative isolate mt-3 h-80 overflow-hidden rounded-xl border bg-background xl:h-96"
         aria-label="Карта сосудистых центров и активных машин"
       >
         <DashboardMap
@@ -258,7 +258,7 @@ function ArrivalsCard({ arrivals, loading }: { arrivals: HospitalArrival[] | nul
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-sm font-medium">{formatDuration(arrival.estimated_travel_seconds)}</p>
-                  <p className={arrival.location_is_fresh ? "text-xs text-emerald-600" : "text-xs text-amber-600"}>{arrival.location_is_fresh ? "GPS актуален" : "GPS устарел"}</p>
+                  <p className={arrival.location_is_fresh ? "text-xs text-emerald-600 dark:text-emerald-400" : "text-xs text-amber-600 dark:text-amber-400"}>{arrival.location_is_fresh ? "GPS актуален" : "GPS устарел"}</p>
                 </div>
               </div>
             ))}

@@ -20,7 +20,7 @@ type UsersTableProps = {
 
 export function UsersTable({ users, roleNames, onUserOpen }: UsersTableProps) {
   return (
-    <div className="overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
+    <div className="overflow-hidden rounded-xl bg-card text-card-foreground ring-1 ring-border">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">

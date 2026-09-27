@@ -33,7 +33,7 @@ export function HospitalsGrid({
           type="button"
           key={hospital.id}
           onClick={() => onOpen(hospital)}
-          className="group relative flex min-h-44 flex-col justify-between rounded-xl bg-white p-4 text-left ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="group relative flex min-h-44 flex-col justify-between rounded-xl bg-card p-4 text-left text-card-foreground ring-1 ring-border transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -72,7 +72,7 @@ export function HospitalsTable({
   onOpen,
 }: HospitalsListProps) {
   return (
-    <div className="overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
+    <div className="overflow-hidden rounded-xl bg-card text-card-foreground ring-1 ring-border">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">

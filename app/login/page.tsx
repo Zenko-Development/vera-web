@@ -118,7 +118,7 @@ export default function Login() {
           </div>
         </div>
         <div
-          className="relative w-full h-full bg-primary rounded-4xl p-10 text-white gap-5 flex flex-col"
+          className="relative flex h-full w-full flex-col gap-5 rounded-4xl bg-primary p-10 text-primary-foreground"
             style={{
               backgroundImage: "url('./clouds.png')",
               backgroundRepeat: "no-repeat",

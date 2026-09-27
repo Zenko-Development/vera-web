@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { LatLngBoundsExpression } from "leaflet";
 import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
 import { setWorkerUrl } from "maplibre-gl";
+import { useTheme } from "next-themes";
 import {
   AttributionControl,
   CircleMarker,
@@ -19,6 +20,9 @@ import { getArrivalCoordinates } from "./map-data";
 const mapStyleUrl =
   process.env.NEXT_PUBLIC_MAP_STYLE_URL ??
   "https://tiles.openfreemap.org/styles/positron";
+const darkMapStyleUrl =
+  process.env.NEXT_PUBLIC_MAP_DARK_STYLE_URL ??
+  "https://tiles.openfreemap.org/styles/dark";
 const mapWorkerUrl =
   process.env.NEXT_PUBLIC_MAP_WORKER_URL ??
   "/maplibre/maplibre-gl-worker.mjs";
@@ -77,8 +81,8 @@ export function MapCanvas({
           <Popup closeButton={false}>
             <div className="min-w-48 space-y-1">
               <p className="font-semibold">{hospital.name}</p>
-              <p className="text-xs text-gray-600">{hospital.address}</p>
-              <Link href={`/hospitals/${hospital.id}`} className="inline-block pt-1 text-sm text-sky-600 hover:underline">
+              <p className="text-xs text-muted-foreground">{hospital.address}</p>
+              <Link href={`/hospitals/${hospital.id}`} className="inline-block pt-1 text-sm text-primary hover:underline">
                 Открыть центр
               </Link>
             </div>
@@ -101,8 +105,8 @@ export function MapCanvas({
           <Popup closeButton={false}>
             <div className="min-w-44 space-y-1">
               <p className="font-semibold">Машина {arrival.car_number}</p>
-              <p className="text-xs text-gray-600">Направляется в {arrival.hospital_name}</p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">Направляется в {arrival.hospital_name}</p>
+              <p className="text-xs text-muted-foreground">
                 GPS {arrival.location_is_fresh ? "актуален" : "устарел"}
               </p>
             </div>
@@ -115,12 +119,14 @@ export function MapCanvas({
 
 function OpenFreeMapLayer() {
   const map = useMap();
+  const { resolvedTheme } = useTheme();
+  const styleUrl = resolvedTheme === "dark" ? darkMapStyleUrl : mapStyleUrl;
 
   useEffect(() => {
     setWorkerUrl(mapWorkerUrl);
 
     const layer = maplibreGL({
-      style: mapStyleUrl,
+      style: styleUrl,
       attributionControl: false,
       interactive: false,
     }).addTo(map);
@@ -131,7 +137,7 @@ function OpenFreeMapLayer() {
       map.attributionControl.removeAttribution(mapAttribution);
       map.removeLayer(layer);
     };
-  }, [map]);
+  }, [map, styleUrl]);
 
   return null;
 }

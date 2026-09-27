@@ -177,11 +177,11 @@ export function UsersManagement() {
 function UsersLoading({ viewMode }: { viewMode: UsersViewMode }) {
   if (viewMode === "table") {
     return (
-      <div className="overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
+      <div className="overflow-hidden rounded-xl bg-card text-card-foreground ring-1 ring-border">
         {[0, 1, 2, 3, 4].map((item) => (
           <div key={item} className="flex items-center gap-3 border-b p-4 last:border-0">
-            <div className="size-8 animate-pulse rounded-full bg-gray-100" />
-            <div className="h-4 w-48 animate-pulse rounded bg-gray-100" />
+            <div className="size-8 animate-pulse rounded-full bg-muted" />
+            <div className="h-4 w-48 animate-pulse rounded bg-muted" />
           </div>
         ))}
       </div>
@@ -193,7 +193,7 @@ function UsersLoading({ viewMode }: { viewMode: UsersViewMode }) {
       {[0, 1, 2, 3, 4, 5, 6, 7].map((item) => (
         <div
           key={item}
-          className="h-44 animate-pulse rounded-xl bg-white ring-1 ring-black/5"
+          className="h-44 animate-pulse rounded-xl bg-card ring-1 ring-border"
         />
       ))}
     </div>
@@ -210,7 +210,7 @@ function UsersEmpty({
   onCreate: () => void;
 }) {
   return (
-    <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed bg-white p-6 text-center">
+    <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed bg-card p-6 text-center text-card-foreground">
       {hasFilters ? (
         <SearchX className="mb-3 size-6 text-muted-foreground" />
       ) : (

@@ -27,25 +27,25 @@ export function ScrollFade({
       >
         <div
           aria-hidden="true"
-          className={cn("h-4 w-full bg-gray-100", edgeClassName)}
+          className={cn("h-4 w-full bg-muted", edgeClassName)}
         />
         {children}
         <div
           aria-hidden="true"
-          className={cn("h-4 w-full bg-gray-100", edgeClassName)}
+          className={cn("h-4 w-full bg-muted", edgeClassName)}
         />
       </div>
       <div
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 z-20 h-4 bg-linear-to-b from-gray-100 to-transparent",
+          "pointer-events-none absolute inset-x-0 top-0 z-20 h-4 bg-linear-to-b from-muted to-transparent",
           fadeClassName,
         )}
       />
       <div
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 z-20 h-4 bg-linear-to-t from-gray-100 to-transparent",
+          "pointer-events-none absolute inset-x-0 bottom-0 z-20 h-4 bg-linear-to-t from-muted to-transparent",
           fadeClassName,
         )}
       />

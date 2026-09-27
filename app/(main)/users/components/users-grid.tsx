@@ -17,7 +17,7 @@ export function UsersGrid({ users, roleNames, onUserOpen }: UsersGridProps) {
           key={user.id}
           type="button"
           onClick={() => onUserOpen(user)}
-          className="group relative flex min-h-44 flex-col justify-between rounded-xl bg-white p-4 text-left ring-1 ring-black/5 transition hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="group relative flex min-h-44 flex-col justify-between rounded-xl bg-card p-4 text-left text-card-foreground ring-1 ring-border transition hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -54,8 +54,8 @@ export function AccessBadge({ enabled }: { enabled: boolean }) {
     <span
       className={
         enabled
-          ? "inline-flex rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700"
-          : "inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
+          ? "inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+          : "inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
       }
     >
       {enabled ? "Доступ активен" : "Доступ отключён"}

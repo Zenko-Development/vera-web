@@ -168,11 +168,11 @@ export function HospitalsManagement() {
 function HospitalsLoading({ viewMode }: { viewMode: HospitalsViewMode }) {
   if (viewMode === "table") {
     return (
-      <div className="overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
+      <div className="overflow-hidden rounded-xl bg-card text-card-foreground ring-1 ring-border">
         {[0, 1, 2, 3, 4].map((item) => (
           <div key={item} className="flex items-center gap-3 border-b p-4 last:border-0">
-            <div className="size-8 animate-pulse rounded-lg bg-gray-100" />
-            <div className="h-4 w-56 animate-pulse rounded bg-gray-100" />
+            <div className="size-8 animate-pulse rounded-lg bg-muted" />
+            <div className="h-4 w-56 animate-pulse rounded bg-muted" />
           </div>
         ))}
       </div>
@@ -182,7 +182,7 @@ function HospitalsLoading({ viewMode }: { viewMode: HospitalsViewMode }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {[0, 1, 2, 3, 4, 5, 6, 7].map((item) => (
-        <div key={item} className="h-52 animate-pulse rounded-xl bg-white ring-1 ring-black/5" />
+        <div key={item} className="h-52 animate-pulse rounded-xl bg-card ring-1 ring-border" />
       ))}
     </div>
   );
@@ -198,7 +198,7 @@ function HospitalsEmpty({
   onCreate: () => void;
 }) {
   return (
-    <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed bg-white p-6 text-center">
+    <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed bg-card p-6 text-center text-card-foreground">
       {hasFilters ? (
         <SearchX className="mb-3 size-7 text-muted-foreground" />
       ) : (
