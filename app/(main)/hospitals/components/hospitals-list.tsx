@@ -99,9 +99,6 @@ export function HospitalsTable({
             >
               <TableCell>
                 <div className="flex items-center gap-3">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Building2 className="size-4" />
-                  </span>
                   <span className="font-medium">{hospital.name}</span>
                 </div>
               </TableCell>
