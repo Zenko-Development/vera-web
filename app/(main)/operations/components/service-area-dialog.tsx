@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { HospitalServiceArea, HospitalServiceAreaRequest, ServiceAreaPoint } from "@/entities/hospital-service-area/model/types";
 import type { Hospital } from "@/entities/hospital/model/types";
+import { useUnsavedChanges, useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 
 const ServiceAreaMap = dynamic(
   () => import("./service-area-map").then((module) => module.ServiceAreaMap),
@@ -50,7 +51,7 @@ type ServiceAreaDialogProps = {
   busy: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenChangeComplete: (open: boolean) => void;
-  onSave: (data: HospitalServiceAreaRequest) => Promise<void>;
+  onSave: (data: HospitalServiceAreaRequest) => Promise<boolean>;
 };
 
 function boundaryToText(boundary: ServiceAreaPoint[]): string {
@@ -113,6 +114,7 @@ export function ServiceAreaDialog({
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const { requestNavigation } = useUnsavedNavigation();
 
   const parsedBoundary = useMemo(
     () => (boundaryText.trim() ? parseBoundary(boundaryText) : { boundary: [], error: null }),
@@ -129,6 +131,15 @@ export function ServiceAreaDialog({
     }
     return [hospital.latitude, hospital.longitude];
   }, [hospital]);
+  const hasChanges = Boolean(
+    target &&
+    (target === "new"
+      ? areaName.trim() || boundaryText.trim() || priority !== "0" || !active
+      : areaName !== target.name ||
+        boundaryText !== boundaryToText(target.boundary) ||
+        priority !== String(target.priority) ||
+        active !== target.active),
+  );
 
   const searchAreas = async () => {
     const normalizedQuery = query.trim();
@@ -168,25 +179,24 @@ export function ServiceAreaDialog({
     setFormError(null);
   };
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!target || !hospital) return;
+  const submit = async (): Promise<boolean> => {
+    if (!target || !hospital) return false;
     if (!areaName.trim()) {
       setFormError("Укажите название зоны.");
-      return;
+      return false;
     }
     if (parsedBoundary.error || parsedBoundary.boundary.length < 4) {
       setFormError(parsedBoundary.error ?? "Выберите территорию или задайте контур вручную.");
-      return;
+      return false;
     }
     const parsedPriority = Number(priority);
     if (!Number.isInteger(parsedPriority)) {
       setFormError("Приоритет должен быть целым числом.");
-      return;
+      return false;
     }
 
     setFormError(null);
-    await onSave({
+    return onSave({
       hospital_id: hospital.id,
       name: areaName.trim(),
       boundary: parsedBoundary.boundary,
@@ -195,17 +205,29 @@ export function ServiceAreaDialog({
     });
   };
 
+  useUnsavedChanges({
+    active: open && hasChanges,
+    onSave: submit,
+  });
+
+  const close = () => {
+    if (busy) return;
+    if (hasChanges) requestNavigation(() => onOpenChange(false));
+    else onOpenChange(false);
+  };
+
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
         if (!nextOpen && busy) return;
-        onOpenChange(nextOpen);
+        if (nextOpen) onOpenChange(true);
+        else close();
       }}
       onOpenChangeComplete={onOpenChangeComplete}
     >
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-5xl">
-        <form className="contents" onSubmit={submit}>
+        <form className="contents" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
           <DialogHeader>
             <DialogTitle>
               {target === "new" ? "Новая зона обслуживания" : "Изменить зону"}
@@ -384,12 +406,12 @@ export function ServiceAreaDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={close}
               disabled={busy}
             >
               Отмена
             </Button>
-            <Button
+            {hasChanges && <Button
               type="submit"
               disabled={
                 busy ||
@@ -399,8 +421,8 @@ export function ServiceAreaDialog({
               }
             >
               {busy && <LoaderCircle className="animate-spin" />}
-              Сохранить зону
-            </Button>
+              {target === "new" ? "Добавить зону" : "Сохранить зону"}
+            </Button>}
           </DialogFooter>
         </form>
       </DialogContent>

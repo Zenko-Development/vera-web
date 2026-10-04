@@ -6,6 +6,7 @@ import type { Role } from "@/entities/role/model/types";
 import { userApi } from "@/entities/user/api/user.api";
 import type {
   CreateUserRequest,
+  UpdateUserRequest,
   User,
 } from "@/entities/user/model/types";
 import { ApiError } from "@/shared/api/types";
@@ -107,6 +108,28 @@ export function useUsers() {
     [],
   );
 
+  const updateUser = useCallback(
+    async (id: User["id"], data: UpdateUserRequest) => {
+      const updatedUser = await userApi.update(id, data);
+      setUsers((current) =>
+        current.map((user) => (user.id === id ? updatedUser : user)),
+      );
+      return updatedUser;
+    },
+    [],
+  );
+
+  const resetPassword = useCallback(
+    (id: User["id"], password: string) =>
+      userApi.resetPassword(id, { new_password: password }),
+    [],
+  );
+
+  const deleteUser = useCallback(async (id: User["id"]) => {
+    await userApi.delete(id);
+    setUsers((current) => current.filter((user) => user.id !== id));
+  }, []);
+
   return {
     users,
     roles,
@@ -116,5 +139,8 @@ export function useUsers() {
     createUser,
     updateAccessStatus,
     updateRole,
+    updateUser,
+    resetPassword,
+    deleteUser,
   };
 }

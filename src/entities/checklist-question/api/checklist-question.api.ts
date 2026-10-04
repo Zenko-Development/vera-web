@@ -3,11 +3,20 @@ import { pathSegment, unwrapData } from "@/shared/api/response";
 import type { ApiResponse, EmptyResponse, UUID } from "@/shared/api/types";
 import type {
   ChecklistQuestion,
+  ChecklistQuestionWithOptions,
   CreateChecklistQuestionRequest,
   UpdateChecklistQuestionRequest,
 } from "../model/types";
 
 export const checklistQuestionApi = {
+  list(versionId: UUID): Promise<ChecklistQuestionWithOptions[]> {
+    return unwrapData(
+      api().get<ApiResponse<ChecklistQuestionWithOptions[]>>(
+        `/checklist-versions/${pathSegment(versionId)}/questions`,
+      ),
+    );
+  },
+
   create(
     versionId: UUID,
     data: CreateChecklistQuestionRequest,

@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Ambulance, Copy, KeyRound, LoaderCircle, Plus, RefreshCw, Tablet } from "lucide-react";
+import { Ambulance, Copy, KeyRound, LoaderCircle, Plus, PowerOff, RefreshCw, Tablet, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { QrCode } from "@/components/ui/qr-code";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import type { AmbulanceVehicle, AmbulanceVehicleStatus } from "@/entities/ambula
 import { deviceApi } from "@/entities/device/api/device.api";
 import type { Device, DeviceCredentials } from "@/entities/device/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { useUnsavedChanges, useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 import { ApiError } from "@/shared/api/types";
 
 const statusNames: Record<AmbulanceVehicleStatus, string> = {
@@ -31,6 +33,7 @@ function errorMessage(error: unknown) {
 
 export function FleetManagement() {
   const showAlert = useAlert();
+  const { requestNavigation } = useUnsavedNavigation();
   const [vehicles, setVehicles] = useState<AmbulanceVehicle[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +42,10 @@ export function FleetManagement() {
   const [carNumber, setCarNumber] = useState("");
   const [vehicleStatus, setVehicleStatus] = useState<AmbulanceVehicleStatus>("active");
   const [credentials, setCredentials] = useState<DeviceCredentials | null>(null);
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<Device | null>(null);
+  const [disableTarget, setDisableTarget] = useState<Device | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Device | null>(null);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<FleetView>("vehicles");
 
@@ -71,9 +77,15 @@ export function FleetManagement() {
     setVehicleStatus(target === "new" ? "active" : target.status);
   };
 
-  const saveVehicle = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!vehicleTarget || !carNumber.trim()) return;
+  const vehicleHasChanges = Boolean(
+    vehicleTarget &&
+    (vehicleTarget === "new"
+      ? carNumber.trim()
+      : carNumber !== vehicleTarget.car_number || vehicleStatus !== vehicleTarget.status),
+  );
+
+  const saveVehicle = async (): Promise<boolean> => {
+    if (!vehicleTarget || !carNumber.trim()) return false;
     setBusy(true);
     try {
       const saved = vehicleTarget === "new"
@@ -85,11 +97,25 @@ export function FleetManagement() {
       setVehicles((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
       setVehicleTarget(null);
       showAlert({ title: "Машина сохранена", type: "success" });
+      return true;
     } catch (cause) {
       showAlert({ title: "Не удалось сохранить машину", description: errorMessage(cause), type: "error" });
+      return false;
     } finally {
       setBusy(false);
     }
+  };
+
+  useUnsavedChanges({
+    active: vehicleHasChanges,
+    onSave: saveVehicle,
+    onDiscard: () => setVehicleTarget(null),
+  });
+
+  const closeVehicle = () => {
+    if (busy) return;
+    if (vehicleHasChanges) requestNavigation(() => setVehicleTarget(null));
+    else setVehicleTarget(null);
   };
 
   const provision = async () => {
@@ -97,7 +123,9 @@ export function FleetManagement() {
     try {
       const created = await deviceApi.create();
       setCredentials(created);
+      setCredentialsOpen(true);
       setDevices((current) => [created.device, ...current]);
+      showAlert({ title: "Планшет зарегистрирован", description: "Сохраните данные или отсканируйте QR-код до закрытия окна.", type: "success" });
     } catch (cause) {
       showAlert({ title: "Не удалось зарегистрировать планшет", description: errorMessage(cause), type: "error" });
     } finally {
@@ -110,10 +138,40 @@ export function FleetManagement() {
     try {
       const rotated = await deviceApi.resetAuthSecret(device.device_id);
       setCredentials(rotated);
+      setCredentialsOpen(true);
       setResetTarget(null);
       setDevices((current) => current.map((item) => item.id === rotated.device.id ? rotated.device : item));
+      showAlert({ title: "Секрет планшета заменён", description: "Передайте новые данные на планшет.", type: "success" });
     } catch (cause) {
       showAlert({ title: "Не удалось заменить секрет", description: errorMessage(cause), type: "error" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disableDevice = async (device: Device) => {
+    setBusy(true);
+    try {
+      const updated = await deviceApi.disable(device.device_id);
+      setDevices((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setDisableTarget(null);
+      showAlert({ title: "Планшет отключён", description: "Активная смена устройства отозвана.", type: "success" });
+    } catch (cause) {
+      showAlert({ title: "Не удалось отключить планшет", description: errorMessage(cause), type: "error" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteDevice = async (device: Device) => {
+    setBusy(true);
+    try {
+      await deviceApi.delete(device.device_id);
+      setDevices((current) => current.filter((item) => item.id !== device.id));
+      setDeleteTarget(null);
+      showAlert({ title: "Планшет удалён", type: "success" });
+    } catch (cause) {
+      showAlert({ title: "Не удалось удалить планшет", description: errorMessage(cause), type: "error" });
     } finally {
       setBusy(false);
     }
@@ -152,8 +210,8 @@ export function FleetManagement() {
             <div><h2 className="font-semibold">Планшеты</h2><p className="text-sm text-muted-foreground">Зарегистрируйте устройство и сразу сохраните одноразовый секрет на планшете.</p></div>
             <Button size="sm" onClick={() => void provision()} disabled={busy}><Plus /> Зарегистрировать планшет</Button>
           </header>
-          <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Идентификатор устройства</TableHead><TableHead>Статус</TableHead><TableHead>Последняя связь</TableHead><TableHead className="w-40" /></TableRow></TableHeader>
-            <TableBody>{devices.map((device) => <TableRow key={device.id}><TableCell className="max-w-64 truncate font-mono text-xs"><span className="inline-flex items-center gap-2"><Tablet className="size-4 text-muted-foreground" />{device.device_id}</span></TableCell><TableCell>{device.status === "active" ? "Активен" : "Отключён"}</TableCell><TableCell className="text-muted-foreground">{device.last_seen_at ? formatDate(device.last_seen_at) : "Нет данных"}</TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => setResetTarget(device)} disabled={busy}><KeyRound /> Заменить секрет</Button></TableCell></TableRow>)}</TableBody>
+          <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Идентификатор устройства</TableHead><TableHead>Статус</TableHead><TableHead>Последняя связь</TableHead><TableHead className="w-72" /></TableRow></TableHeader>
+            <TableBody>{devices.map((device) => <TableRow key={device.id}><TableCell className="max-w-64 truncate font-mono text-xs"><span className="inline-flex items-center gap-2"><Tablet className="size-4 text-muted-foreground" />{device.device_id}</span></TableCell><TableCell>{device.status === "active" ? "Активен" : "Отключён"}</TableCell><TableCell className="text-muted-foreground">{device.last_seen_at ? formatDate(device.last_seen_at) : "Нет данных"}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => setResetTarget(device)} disabled={busy || device.status !== "active"}><KeyRound /> Заменить секрет</Button>{device.status === "active" && <Button variant="ghost" size="icon-sm" aria-label="Отключить планшет" onClick={() => setDisableTarget(device)} disabled={busy}><PowerOff /></Button>}<Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" aria-label="Удалить планшет" onClick={() => setDeleteTarget(device)} disabled={busy}><Trash2 /></Button></div></TableCell></TableRow>)}</TableBody>
           </Table>
           </div>
           {!loading && devices.length === 0 && <EmptyFleet icon={Tablet} title="Планшетов пока нет" description="Зарегистрируйте планшет и передайте выданные данные на устройство." action="Зарегистрировать планшет" onAction={() => void provision()} />}
@@ -161,19 +219,21 @@ export function FleetManagement() {
         }
       </div>
 
-      <Dialog open={vehicleTarget !== null} onOpenChange={(open) => { if (!open && !busy) setVehicleTarget(null); }}>
-        <DialogContent><form className="contents" onSubmit={saveVehicle}><DialogHeader><DialogTitle>{vehicleTarget === "new" ? "Новая машина" : "Изменить машину"}</DialogTitle><DialogDescription>Номер используется бригадой при открытии смены.</DialogDescription></DialogHeader>
+      <Dialog open={vehicleTarget !== null} onOpenChange={(open) => { if (!open) closeVehicle(); }}>
+        <DialogContent><form className="contents" onSubmit={(event) => { event.preventDefault(); void saveVehicle(); }}><DialogHeader><DialogTitle>{vehicleTarget === "new" ? "Новая машина" : "Изменить машину"}</DialogTitle><DialogDescription>Номер используется бригадой при открытии смены.</DialogDescription></DialogHeader>
           <div className="grid gap-4"><div className="grid gap-2"><Label htmlFor="car-number">Номер машины</Label><Input id="car-number" value={carNumber} onChange={(event) => setCarNumber(event.target.value)} required autoFocus /></div>
             {vehicleTarget !== "new" && <div className="grid gap-2"><Label htmlFor="vehicle-status">Статус</Label><Select value={vehicleStatus} onValueChange={(value) => setVehicleStatus(value as AmbulanceVehicleStatus)}><SelectTrigger id="vehicle-status" className="w-full"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(statusNames).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>}
-          </div><DialogFooter><Button type="button" variant="outline" onClick={() => setVehicleTarget(null)} disabled={busy}>Отмена</Button><Button type="submit" disabled={busy || !carNumber.trim()}>{busy && <LoaderCircle className="animate-spin" />} Сохранить</Button></DialogFooter></form></DialogContent>
+          </div><DialogFooter><Button type="button" variant="outline" onClick={closeVehicle} disabled={busy}>Отмена</Button>{vehicleHasChanges && <Button type="submit" disabled={busy || !carNumber.trim()}>{busy && <LoaderCircle className="animate-spin" />}{vehicleTarget === "new" ? "Добавить" : "Сохранить"}</Button>}</DialogFooter></form></DialogContent>
       </Dialog>
 
-      <Dialog open={credentials !== null} onOpenChange={(open) => { if (!open) setCredentials(null); }}>
-        <DialogContent><DialogHeader><DialogTitle>Данные планшета</DialogTitle><DialogDescription>Секрет отображается один раз. Передайте его в защищённое хранилище планшета.</DialogDescription></DialogHeader>
-          {credentials && <div className="grid gap-3"><Credential label="Идентификатор устройства" value={credentials.device.device_id} /><Credential label="Секрет авторизации" value={credentials.auth_secret} /></div>}
-          <DialogFooter><Button onClick={() => setCredentials(null)}>Готово</Button></DialogFooter></DialogContent>
+      <Dialog open={credentialsOpen} onOpenChange={setCredentialsOpen} onOpenChangeComplete={(open) => { if (!open) setCredentials(null); }}>
+        <DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle>Данные планшета</DialogTitle><DialogDescription>Секрет и QR-код отображаются один раз. Отсканируйте код на планшете или введите данные вручную.</DialogDescription></DialogHeader>
+          {credentials && <div className="grid gap-4 sm:grid-cols-[minmax(0,240px)_minmax(0,1fr)]"><QrCode value={credentials.qr_payload} label="QR-код с данными планшета" /><div className="grid content-center gap-3"><Credential label="Идентификатор устройства" value={credentials.device.device_id} /><Credential label="Секрет авторизации" value={credentials.auth_secret} /><p className="text-xs leading-relaxed text-muted-foreground">QR-код содержит только идентификатор и одноразово выданный секрет. После закрытия окна он не сохраняется.</p></div></div>}
+          <DialogFooter><Button onClick={() => setCredentialsOpen(false)}>Готово</Button></DialogFooter></DialogContent>
       </Dialog>
       <Dialog open={resetTarget !== null} onOpenChange={(open) => { if (!open && !busy) setResetTarget(null); }}><DialogContent><DialogHeader><DialogTitle>Заменить секрет планшета?</DialogTitle><DialogDescription>Активные смены устройства будут отозваны. Старый секрет перестанет работать.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setResetTarget(null)} disabled={busy}>Отмена</Button><Button variant="destructive" onClick={() => { if (resetTarget) void resetSecret(resetTarget); }} disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}Заменить секрет</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={disableTarget !== null} onOpenChange={(open) => { if (!open && !busy) setDisableTarget(null); }}><DialogContent><DialogHeader><DialogTitle>Отключить планшет?</DialogTitle><DialogDescription>Текущая смена будет отозвана, а планшет больше не сможет войти. Включить его обратно этой операцией нельзя.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setDisableTarget(null)} disabled={busy}>Отмена</Button><Button variant="destructive" onClick={() => { if (disableTarget) void disableDevice(disableTarget); }} disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}Отключить</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open && !busy) setDeleteTarget(null); }}><DialogContent><DialogHeader><DialogTitle>Удалить планшет?</DialogTitle><DialogDescription>Устройство исчезнет из списка, а его активная смена будет отозвана. Это действие нельзя отменить.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={busy}>Отмена</Button><Button variant="destructive" onClick={() => { if (deleteTarget) void deleteDevice(deleteTarget); }} disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}Удалить</Button></DialogFooter></DialogContent></Dialog>
     </div>
   );
 }

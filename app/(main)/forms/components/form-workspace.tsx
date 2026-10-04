@@ -10,6 +10,7 @@ import { checklistVersionApi } from "@/entities/checklist-version/api/checklist-
 import type { ChecklistVersion } from "@/entities/checklist-version/model/types";
 import type { Checklist } from "@/entities/checklist/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 import { useFormVersion } from "../hooks/use-form-version";
 import { getFormsError } from "../hooks/use-forms";
 import { QuestionsEditor } from "./questions-editor";
@@ -50,6 +51,7 @@ export function FormWorkspace({
   onCloseComplete,
 }: Props) {
   const showAlert = useAlert();
+  const { requestNavigation } = useUnsavedNavigation();
   const [versions, setVersions] = useState<ChecklistVersion[]>([]);
   const [versionId, setVersionId] = useState<string | null>(null);
   const [step, setStep] = useState<EditorStep>("builder");
@@ -187,7 +189,8 @@ export function FormWorkspace({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (nextOpen || !busy) onOpenChange(nextOpen);
+        if (nextOpen) onOpenChange(true);
+        else if (!busy) requestNavigation(() => onOpenChange(false));
       }}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) onCloseComplete();

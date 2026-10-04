@@ -31,6 +31,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/features/auth/useAuth";
+import { useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 import { cn } from "@/lib/utils";
 import Logo from "@/shared/assets/icons/logo-icon.svg";
 
@@ -38,20 +39,21 @@ type MenuItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  permissions?: string[];
 };
 
 const primaryItems: MenuItem[] = [
   { href: "/", label: "Главная", icon: LayoutDashboard },
-  { href: "/users", label: "Пользователи", icon: UsersRound },
-  { href: "/hospitals", label: "Сосудистые центры", icon: Hospital },
-  { href: "/map", label: "Карта", icon: MapPinned },
-  { href: "/forms", label: "Формы", icon: ListTodo },
-  { href: "/fleet", label: "Машины и планшеты", icon: Ambulance },
-  { href: "/analytics", label: "История действий", icon: RotateCcwClock },
+  { href: "/users", label: "Пользователи", icon: UsersRound, permissions: ["user.manage"] },
+  { href: "/hospitals", label: "Сосудистые центры", icon: Hospital, permissions: ["hospital.read", "hospital.manage", "hospital_staff.manage"] },
+  { href: "/map", label: "Карта", icon: MapPinned, permissions: ["fleet_location.read", "hospital_arrival.read"] },
+  { href: "/forms", label: "Формы", icon: ListTodo, permissions: ["checklist.read", "checklist.manage"] },
+  { href: "/fleet", label: "Машины и планшеты", icon: Ambulance, permissions: ["ambulance_vehicle.manage", "device.read", "device.provision"] },
+  { href: "/analytics", label: "История действий", icon: RotateCcwClock, permissions: ["analytics.read"] },
 ];
 
 const secondaryItems: MenuItem[] = [
-  { href: "/settings", label: "Настройки", icon: Settings },
+  { href: "/settings", label: "Настройки", icon: Settings, permissions: ["rbac.manage", "geo_tracking_policy.manage", "facility_type.manage", "sickness.manage"] },
   { href: "/help", label: "Помощь", icon: MessageCircleQuestionMark },
 ];
 
@@ -92,14 +94,22 @@ function MenuLink({ item, active }: { item: MenuItem; active: boolean }) {
 export function BacksideMenu() {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const { requestNavigation } = useUnsavedNavigation();
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const canSee = (item: MenuItem) =>
+    !item.permissions ||
+    item.permissions.some((permission) => user?.permissions.includes(permission));
 
-  const confirmLogout = async () => {
+  const performLogout = async () => {
     setIsLoggingOut(true);
     await logout();
     router.replace("/login");
+  };
+
+  const confirmLogout = () => {
+    requestNavigation(() => void performLogout());
   };
 
   return (
@@ -130,7 +140,7 @@ export function BacksideMenu() {
         </Tooltip>
 
         <nav className="flex min-h-0 flex-col items-center overflow-y-auto" aria-label="Разделы">
-          {primaryItems.map((item) => (
+          {primaryItems.filter(canSee).map((item) => (
             <MenuLink
               key={item.href}
               item={item}
@@ -141,7 +151,7 @@ export function BacksideMenu() {
       </div>
 
       <nav className="flex flex-col items-center" aria-label="Дополнительно">
-        {secondaryItems.map((item) => (
+        {secondaryItems.filter(canSee).map((item) => (
           <MenuLink
             key={item.href}
             item={item}
@@ -193,7 +203,7 @@ export function BacksideMenu() {
             <Button
               type="button"
               variant="destructive"
-              onClick={() => void confirmLogout()}
+              onClick={confirmLogout}
               disabled={isLoggingOut}
             >
               {isLoggingOut ? "Выходим…" : "Выйти"}

@@ -15,6 +15,7 @@ import {
 } from "react-leaflet";
 import type { HospitalArrival } from "@/entities/hospital-arrival/model/types";
 import type { Hospital } from "@/entities/hospital/model/types";
+import type { FleetLiveVehicle } from "@/entities/fleet-live/model/types";
 import { getArrivalCoordinates } from "./map-data";
 
 const mapStyleUrl =
@@ -32,17 +33,39 @@ const mapAttribution =
 export function MapCanvas({
   hospitals,
   arrivals,
+  fleet,
 }: {
   hospitals: Hospital[];
   arrivals: HospitalArrival[];
+  fleet?: FleetLiveVehicle[];
 }) {
   const vehiclePoints = useMemo(
-    () =>
-      arrivals.flatMap((arrival) => {
+    () => {
+      if (fleet !== undefined) {
+        return fleet.flatMap((vehicle) =>
+          Number.isFinite(vehicle.latitude) && Number.isFinite(vehicle.longitude)
+            ? [{
+                key: vehicle.session_id,
+                carNumber: vehicle.car_number,
+                coordinates: [vehicle.latitude as number, vehicle.longitude as number] as [number, number],
+                locationIsFresh: vehicle.location_is_fresh,
+                description: vehicle.emergency_call_id ? "Выполняет вызов" : "На смене",
+              }]
+            : [],
+        );
+      }
+      return arrivals.flatMap((arrival) => {
         const coordinates = getArrivalCoordinates(arrival);
-        return coordinates ? [{ arrival, coordinates }] : [];
-      }),
-    [arrivals],
+        return coordinates ? [{
+          key: arrival.emergency_call_id,
+          carNumber: arrival.car_number,
+          coordinates,
+          locationIsFresh: arrival.location_is_fresh,
+          description: `Направляется в ${arrival.hospital_name}`,
+        }] : [];
+      });
+    },
+    [arrivals, fleet],
   );
   const points = useMemo<[number, number][]>(
     () => [
@@ -90,24 +113,24 @@ export function MapCanvas({
         </CircleMarker>
       ))}
 
-      {vehiclePoints.map(({ arrival, coordinates }) => (
+      {vehiclePoints.map((vehicle) => (
         <CircleMarker
-          key={arrival.emergency_call_id}
-          center={coordinates}
+          key={vehicle.key}
+          center={vehicle.coordinates}
           radius={8}
           pathOptions={{
             color: "#ffffff",
             weight: 3,
-            fillColor: arrival.location_is_fresh ? "#10b981" : "#f59e0b",
+            fillColor: vehicle.locationIsFresh ? "#10b981" : "#f59e0b",
             fillOpacity: 1,
           }}
         >
           <Popup closeButton={false}>
             <div className="min-w-44 space-y-1">
-              <p className="font-semibold">Машина {arrival.car_number}</p>
-              <p className="text-xs text-muted-foreground">Направляется в {arrival.hospital_name}</p>
+              <p className="font-semibold">Машина {vehicle.carNumber}</p>
+              <p className="text-xs text-muted-foreground">{vehicle.description}</p>
               <p className="text-xs text-muted-foreground">
-                Геопозиция {arrival.location_is_fresh ? "актуальна" : "устарела"}
+                Геопозиция {vehicle.locationIsFresh ? "актуальна" : "устарела"}
               </p>
             </div>
           </Popup>

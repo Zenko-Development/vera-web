@@ -8,7 +8,9 @@
 
 ## Вход и доступ
 
-Используйте `POST /auth/login`, `POST /auth/refresh` и `POST /auth/logout`.
+Используйте `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` и
+`GET /auth/me`. После входа запрашивайте `/auth/me` для меню по текущим правам
+и получения назначенных сотруднику `hospital_ids`.
 Контракт: [авторизация сотрудников](api/auth-users-access.md).
 Защищённые запросы требуют `Authorization: Bearer <USER_ACCESS_TOKEN>`.
 Сервер проверяет права роли; `401` означает проблему аутентификации,
@@ -19,7 +21,7 @@
 | Экран / задача | Маршруты | Подробный контракт |
 | --- | --- | --- |
 | Пользователи, роли, назначение прав | `/user`, `/role`, `/permission`, `/link/role/…`, `/link/permission/…` | [Пользователи и права](api/auth-users-access.md), [RBAC](RBAC.md) |
-| Регистрация планшета, просмотр, сброс секрета | `/device/`, `/device/{device_id}`, `/device/{device_id}/auth-secret` | [Provisioning](api/device-ambulance-access.md#provisioning-устройства) |
+| Регистрация планшета, просмотр, сброс секрета, отключение и удаление | `/device/`, `/device/{device_id}`, `/device/{device_id}/auth-secret`, `PATCH /device/{device_id}/status`, `DELETE /device/{device_id}` | [Provisioning](api/device-ambulance-access.md#provisioning-устройства) |
 | Парк автомобилей | `/ambulance-vehicles/`, `/ambulance-vehicles/{id}` | [Машины](api/device-ambulance-access.md#машины-скорой) |
 | Больницы, заболевания, типы учреждений и связи | `/hospital`, `/sickness`, `/facility-type`, `/link/hospital/…`, `/link/sickness/…` | [Справочники](api/catalogs.md) |
 | Конструктор чеклистов, версии, вопросы, варианты | `/checklist`, `/checklist-versions`, `/checklist-questions`, `/checklist-options` | [Чеклисты](api/checklists.md) |
@@ -51,13 +53,18 @@
 
 Список прибытий обновляется HTTP-опросом (polling). WebSocket и серверные
 push-события сейчас не реализованы. Интервал опроса интерфейса выбирает клиент;
-`active_call_interval_seconds` задаёт частоту отправки GPS планшетом.
+`device_location_interval_seconds` задаёт частоту общей GPS-позиции на смене;
+`active_call_interval_seconds` — частоту точек для расчёта ETA при вызове.
 Закрытые вызовы исчезают из активных прибытий и доступны через аналитику.
 
 ## Граница с мобильным приложением
 
-Веб-администратор создаёт машину и выдаёт планшету `device_id` и `auth_secret`.
-Секрет возвращается при выдаче/сбросе; его необходимо передать в защищённое
-хранилище планшета. Дальше сменой, вызовом, GPS и ответами на чеклист управляет
+Веб-администратор создаёт машину и вызывает `POST /device/`. Ответ содержит
+`data.qr_payload`: это готовая строка для QR-кодирования, внутри которой есть
+`device_id` и исходный `auth_secret`. Показывайте QR только на экране выдачи;
+не храните его в браузере и не логируйте. Секрет возвращается лишь при выдаче
+или `POST /device/{device_id}/auth-secret`; при потере нужен сброс.
+`auth_secret_hash` в QR и API не передаётся. Планшет сохраняет реквизиты в
+защищённом хранилище. Дальше сменой, вызовом, GPS и ответами на чеклист управляет
 [мобильное приложение](API_MOBILE_AMBULANCE.md) со своим device-токеном.
 Маршруты `/device-access/*` и `/checklist-runs/*` не являются API сотрудника.

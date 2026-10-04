@@ -43,6 +43,7 @@ import type {
 } from "@/entities/checklist-question/model/types";
 import type { ChecklistVersion } from "@/entities/checklist-version/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { useUnsavedChanges, useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 import { checklistController } from "@/features/api/controller/checklist.controller";
 import type { FormVersionData } from "../hooks/use-form-version";
 import { getFormsError } from "../hooks/use-forms";
@@ -84,6 +85,7 @@ export function QuestionsEditor({
   onChanged,
 }: Props) {
   const showAlert = useAlert();
+  const { requestNavigation } = useUnsavedNavigation();
   const editable = version.status === "draft";
   const canReorder = editable && data.unavailableQuestionCount === 0;
   const [questionForm, setQuestionForm] =
@@ -111,6 +113,17 @@ export function QuestionsEditor({
   const [metadataDescription, setMetadataDescription] = useState(formDescription);
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [metadataBusy, setMetadataBusy] = useState(false);
+  const metadataHasChanges = metadataName !== formName || metadataDescription !== formDescription;
+  const questionHasChanges = Boolean(
+    questionForm &&
+    (questionForm === "new"
+      ? questionText.trim()
+      : questionText !== questionForm.question || questionType !== questionForm.type || required !== questionForm.required),
+  );
+  const optionHasChanges = Boolean(
+    optionForm &&
+    (optionForm.item === "new" ? optionLabel.trim() : optionLabel !== optionForm.item.label),
+  );
 
   const questions = useMemo(() => {
     if (!questionOrder) return data.questions;
@@ -139,9 +152,8 @@ export function QuestionsEditor({
     setMetadataEditing(true);
   };
 
-  const saveMetadata = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!metadataName.trim()) return;
+  const saveMetadata = async (): Promise<boolean> => {
+    if (!metadataName.trim()) return false;
     setMetadataBusy(true);
     setMetadataError(null);
     try {
@@ -151,11 +163,24 @@ export function QuestionsEditor({
       });
       setMetadataEditing(false);
       showAlert({ title: "Основные данные сохранены", type: "success" });
+      return true;
     } catch (cause) {
       setMetadataError(getFormsError(cause));
+      return false;
     } finally {
       setMetadataBusy(false);
     }
+  };
+
+  useUnsavedChanges({
+    active: metadataEditing && metadataHasChanges,
+    onSave: saveMetadata,
+    onDiscard: () => setMetadataEditing(false),
+  });
+
+  const closeMetadata = () => {
+    if (metadataHasChanges) requestNavigation(() => setMetadataEditing(false));
+    else setMetadataEditing(false);
   };
 
   const openQuestion = (question: ChecklistQuestion | "new") => {
@@ -166,9 +191,8 @@ export function QuestionsEditor({
     setOptionForm(null);
   };
 
-  const saveQuestion = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!questionForm || !questionText.trim()) return;
+  const saveQuestion = async (): Promise<boolean> => {
+    if (!questionForm || !questionText.trim()) return false;
     setBusy(true);
     try {
       const position =
@@ -192,12 +216,14 @@ export function QuestionsEditor({
         title: questionForm === "new" ? "Вопрос добавлен" : "Вопрос сохранён",
         type: "success",
       });
+      return true;
     } catch (cause) {
       showAlert({
         title: "Не удалось сохранить вопрос",
         description: getFormsError(cause),
         type: "error",
       });
+      return false;
     } finally {
       setBusy(false);
     }
@@ -211,9 +237,8 @@ export function QuestionsEditor({
     setOptionLabel(item === "new" ? "" : item.label);
   };
 
-  const saveOption = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!optionForm || !optionLabel.trim()) return;
+  const saveOption = async (): Promise<boolean> => {
+    if (!optionForm || !optionLabel.trim()) return false;
     setBusy(true);
     try {
       if (optionForm.item === "new") {
@@ -236,16 +261,29 @@ export function QuestionsEditor({
         title: optionForm.item === "new" ? "Вариант добавлен" : "Вариант сохранён",
         type: "success",
       });
+      return true;
     } catch (cause) {
       showAlert({
         title: "Не удалось сохранить вариант",
         description: getFormsError(cause),
         type: "error",
       });
+      return false;
     } finally {
       setBusy(false);
     }
   };
+
+  useUnsavedChanges({
+    active: questionHasChanges,
+    onSave: saveQuestion,
+    onDiscard: () => setQuestionForm(null),
+  });
+  useUnsavedChanges({
+    active: optionHasChanges,
+    onSave: saveOption,
+    onDiscard: () => setOptionForm(null),
+  });
 
   const remove = async () => {
     if (!deleteTarget) return;
@@ -423,7 +461,7 @@ export function QuestionsEditor({
     <div className="mx-auto w-full max-w-4xl space-y-4 pb-16">
       <section className="rounded-2xl border bg-card p-6 text-card-foreground shadow-sm">
         {metadataEditing ? (
-          <form className="space-y-4" onSubmit={saveMetadata}>
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void saveMetadata(); }}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold">Основные данные формы</p>
               <Button
@@ -431,7 +469,7 @@ export function QuestionsEditor({
                 size="icon-sm"
                 variant="ghost"
                 aria-label="Закрыть редактирование"
-                onClick={() => setMetadataEditing(false)}
+                onClick={closeMetadata}
                 disabled={metadataBusy}
               >
                 <X />
@@ -466,18 +504,18 @@ export function QuestionsEditor({
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setMetadataEditing(false)}
+                onClick={closeMetadata}
                 disabled={metadataBusy}
               >
                 Отмена
               </Button>
-              <Button type="submit" disabled={metadataBusy || !metadataName.trim()}>
+              {metadataHasChanges && <Button type="submit" disabled={metadataBusy || !metadataName.trim()}>
                 <MorphIcon
                   icon={metadataBusy ? LoaderCircleIcon : SaveIcon}
                   className={metadataBusy ? "animate-spin" : undefined}
                 />
                 Сохранить
-              </Button>
+              </Button>}
             </div>
           </form>
         ) : (
@@ -608,12 +646,13 @@ export function QuestionsEditor({
                       text={questionText}
                       type={questionType}
                       required={required}
+                      hasChanges={questionText !== question.question || questionType !== question.type || required !== question.required}
                       busy={busy}
                       onTextChange={setQuestionText}
                       onTypeChange={setQuestionType}
                       onRequiredChange={setRequired}
                       onCancel={() => setQuestionForm(null)}
-                      onSubmit={saveQuestion}
+                      onSubmit={(event) => { event.preventDefault(); void saveQuestion(); }}
                     />
                   ) : (
                     <header className="flex items-start gap-3 p-5 pb-3">
@@ -689,7 +728,7 @@ export function QuestionsEditor({
                       }
                       onOptionLabelChange={setOptionLabel}
                       onOptionCancel={() => setOptionForm(null)}
-                      onOptionSubmit={saveOption}
+                      onOptionSubmit={(event) => { event.preventDefault(); void saveOption(); }}
                       onOptionDragStart={(option) =>
                         setDraggingOption({ questionId: question.id, id: option.id })
                       }
@@ -730,12 +769,13 @@ export function QuestionsEditor({
                   text={questionText}
                   type={questionType}
                   required={required}
+                  hasChanges={Boolean(questionText.trim())}
                   busy={busy}
                   onTextChange={setQuestionText}
                   onTypeChange={setQuestionType}
                   onRequiredChange={setRequired}
                   onCancel={() => setQuestionForm(null)}
-                  onSubmit={saveQuestion}
+                  onSubmit={(event) => { event.preventDefault(); void saveQuestion(); }}
                 />
                 <DraftAnswer type={questionType} />
               </article>
@@ -794,6 +834,7 @@ type QuestionSettingsProps = {
   text: string;
   type: ChecklistQuestionType;
   required: boolean;
+  hasChanges: boolean;
   busy: boolean;
   onTextChange: (value: string) => void;
   onTypeChange: (value: ChecklistQuestionType) => void;
@@ -866,12 +907,12 @@ function QuestionSettings(props: QuestionSettingsProps) {
         <Button type="button" variant="ghost" onClick={props.onCancel} disabled={props.busy}>
           Отмена
         </Button>
-        <Button type="submit" disabled={props.busy || !props.text.trim()}>
+        {props.hasChanges && <Button type="submit" disabled={props.busy || !props.text.trim()}>
           <MorphIcon
             icon={props.busy ? LoaderCircleIcon : SaveIcon}
             className={props.busy ? "animate-spin" : undefined}
           /> Сохранить
-        </Button>
+        </Button>}
       </div>
     </form>
   );
@@ -941,6 +982,7 @@ function QuestionAnswer(props: QuestionAnswerProps) {
               {editing ? (
                 <OptionForm
                   label={props.optionLabel}
+                  hasChanges={props.optionLabel !== option.label}
                   busy={props.busy}
                   onLabelChange={props.onOptionLabelChange}
                   onCancel={props.onOptionCancel}
@@ -1031,6 +1073,7 @@ function QuestionAnswer(props: QuestionAnswerProps) {
         props.optionForm.item === "new" && (
           <OptionForm
             label={props.optionLabel}
+            hasChanges={Boolean(props.optionLabel.trim())}
             busy={props.busy}
             onLabelChange={props.onOptionLabelChange}
             onCancel={props.onOptionCancel}
@@ -1083,12 +1126,14 @@ function QuestionAnswer(props: QuestionAnswerProps) {
 
 function OptionForm({
   label,
+  hasChanges,
   busy,
   onLabelChange,
   onCancel,
   onSubmit,
 }: {
   label: string;
+  hasChanges: boolean;
   busy: boolean;
   onLabelChange: (value: string) => void;
   onCancel: () => void;
@@ -1103,12 +1148,12 @@ function OptionForm({
         disabled={busy}
         autoFocus
       />
-      <Button type="submit" size="icon-sm" aria-label="Сохранить вариант" disabled={busy || !label.trim()}>
+      {hasChanges && <Button type="submit" size="icon-sm" aria-label="Сохранить вариант" disabled={busy || !label.trim()}>
         <MorphIcon
           icon={busy ? LoaderCircleIcon : SaveIcon}
           className={busy ? "animate-spin" : undefined}
         />
-      </Button>
+      </Button>}
       <Button type="button" size="icon-sm" variant="ghost" aria-label="Отмена" onClick={onCancel} disabled={busy}>
         <X />
       </Button>

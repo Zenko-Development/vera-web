@@ -23,3 +23,11 @@ export type CreateUserRequest = {
 export type UpdateUserAccessStatusRequest = Pick<User, "acces_status">;
 
 export type UpdateUserRoleRequest = Pick<User, "role_id">;
+
+export type UpdateUserRequest = Partial<
+  Pick<User, "user_name" | "name_first" | "name_middle" | "name_last">
+>;
+
+export type ResetUserPasswordRequest = {
+  new_password: string;
+};

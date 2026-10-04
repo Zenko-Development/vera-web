@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Checklist, UpdateChecklistRequest } from "@/entities/checklist/model/types";
 import type { Sickness } from "@/entities/sickness/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { useUnsavedChanges, useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 import { getFormsError } from "../hooks/use-forms";
 
 type ChecklistDialogProps = {
@@ -30,31 +31,44 @@ export function ChecklistDialog({ open, form, sicknesses, onOpenChange, onOpenCh
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; sicknessId?: string }>({});
   const alert = useAlert();
+  const { requestNavigation } = useUnsavedNavigation();
+  const hasChanges = name !== (form?.name ?? "") || description !== (form?.description ?? "") || sicknessId !== (form?.sickness_id ?? "");
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submit = async (): Promise<boolean> => {
     const nextErrors = {
       name: name.trim() ? undefined : "Укажите понятное название формы.",
       sicknessId: sicknessId ? undefined : "Выберите заболевание.",
     };
     setErrors(nextErrors);
-    if (nextErrors.name || nextErrors.sicknessId) return;
+    if (nextErrors.name || nextErrors.sicknessId) return false;
     setSaving(true);
     try {
       await onSave({ name: name.trim(), description: description.trim(), sickness_id: sicknessId });
       alert({ title: form ? "Форма обновлена" : "Форма создана", type: "success" });
       onOpenChange(false);
+      return true;
     } catch (cause) {
       alert({ title: "Не удалось сохранить форму", description: getFormsError(cause), type: "error" });
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
+  useUnsavedChanges({
+    active: open && hasChanges,
+    onSave: submit,
+  });
+
+  const close = () => {
+    if (hasChanges) requestNavigation(() => onOpenChange(false));
+    else onOpenChange(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }} onOpenChangeComplete={onOpenChangeComplete}>
+    <Dialog open={open} onOpenChange={(next) => { if (!saving) { if (next) onOpenChange(true); else close(); } }} onOpenChangeComplete={onOpenChangeComplete}>
       <DialogContent>
-        <form onSubmit={submit} className="contents">
+        <form onSubmit={(event) => { event.preventDefault(); void submit(); }} className="contents">
           <DialogHeader>
             <DialogTitle>{form ? "Редактировать форму" : "Новая форма"}</DialogTitle>
             <DialogDescription>Укажите основные данные. После создания сразу откроется редактор содержимого.</DialogDescription>
@@ -84,10 +98,10 @@ export function ChecklistDialog({ open, form, sicknesses, onOpenChange, onOpenCh
             {!form && <><FieldSeparator>Следующий шаг</FieldSeparator><FieldDescription>После сохранения откроется пошаговый редактор вопросов, правил и маршрутизации.</FieldDescription></>}
           </FieldGroup>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Отмена</Button>
-            <Button type="submit" disabled={saving || !name.trim() || !sicknessId}>
+            <Button type="button" variant="outline" onClick={close} disabled={saving}>Отмена</Button>
+            {(!form || hasChanges) && <Button type="submit" disabled={saving || !name.trim() || !sicknessId}>
               {saving && <LoaderCircle className="animate-spin" />} {form ? "Сохранить" : "Создать и открыть редактор"}
-            </Button>
+            </Button>}
           </DialogFooter>
         </form>
       </DialogContent>

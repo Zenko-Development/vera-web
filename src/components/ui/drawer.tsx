@@ -29,15 +29,25 @@ function Drawer({
   showSwipeHandle = false,
   snapPoints,
   swipeDirection = "down",
+  children,
+  open,
+  onOpenChangeComplete,
   ...props
 }: DrawerPrimitive.Root.Props & {
   showSwipeHandle?: boolean
 }) {
+  const [exitChildren, setExitChildren] = React.useState<
+    DrawerPrimitive.Root.Props["children"]
+  >(() => children)
   const hasSnapPoints = snapPoints != null && snapPoints.length > 0
   const contextValue = React.useMemo(
     () => ({ hasSnapPoints, modal, showSwipeHandle, swipeDirection }),
     [hasSnapPoints, modal, showSwipeHandle, swipeDirection]
   )
+
+  if (open !== false && exitChildren !== children) {
+    setExitChildren(() => children)
+  }
 
   return (
     <DrawerContext.Provider value={contextValue}>
@@ -46,8 +56,15 @@ function Drawer({
         modal={modal}
         snapPoints={snapPoints}
         swipeDirection={swipeDirection}
+        open={open}
+        onOpenChangeComplete={(nextOpen) => {
+          onOpenChangeComplete?.(nextOpen)
+          if (!nextOpen) setExitChildren(() => null)
+        }}
         {...props}
-      />
+      >
+        {open === false ? exitChildren : children}
+      </DrawerPrimitive.Root>
     </DrawerContext.Provider>
   )
 }

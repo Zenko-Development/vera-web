@@ -17,4 +17,26 @@ export type LogoutRequest = RefreshRequest;
 
 export type AuthIdentity = {
   username: string;
+  user: {
+    id: string;
+    user_name: string;
+    name_first: string;
+    name_middle: string;
+    name_last: string;
+    acces_status: boolean;
+    role_id: string;
+  };
+  role: {
+    id: string;
+    name: string;
+  };
+  permissions: string[];
+  hospitalIds: string[];
+};
+
+export type AuthMeResponse = {
+  user: AuthIdentity["user"];
+  role: AuthIdentity["role"];
+  permissions: string[];
+  hospital_ids: string[];
 };

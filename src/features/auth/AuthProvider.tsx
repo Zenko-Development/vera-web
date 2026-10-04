@@ -37,10 +37,10 @@ export const AuthProvider = ({
     username: string;
     password: string;
   }) => {
-    await sessionController.login({ username, password });
+    const identity = await sessionController.login({ username, password });
     
     if (isMountedRef.current) {
-      setUser({ username });
+      setUser(identity);
     }
   }, []);
 
@@ -58,17 +58,20 @@ export const AuthProvider = ({
 
   const checkAuth = useCallback(async () => {
     const access = tokenStorage.getAccess();
-    const username = tokenStorage.getUsername();
-
     if (!access) {
       setUser(null);
       return false;
     }
 
-    if (isMountedRef.current) {
-      setUser({ username: username ?? "" });
+    try {
+      const identity = await sessionController.getCurrentIdentity();
+      if (isMountedRef.current) setUser(identity);
+      return true;
+    } catch {
+      tokenStorage.clear();
+      if (isMountedRef.current) setUser(null);
+      return false;
     }
-    return true;
   }, []);
 
   useEffect(() => {

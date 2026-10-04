@@ -3,6 +3,7 @@ import { unwrapData } from "@/shared/api/response";
 import type { ApiResponse, EmptyResponse } from "@/shared/api/types";
 import type {
   AuthTokens,
+  AuthMeResponse,
   LoginRequest,
   LogoutRequest,
   RefreshRequest,
@@ -25,5 +26,9 @@ export const authApi = {
 
   logout(data: LogoutRequest): Promise<EmptyResponse> {
     return api().post<EmptyResponse>("/auth/logout", data);
+  },
+
+  me(): Promise<AuthMeResponse> {
+    return unwrapData(api().get<ApiResponse<AuthMeResponse>>("/auth/me"));
   },
 };

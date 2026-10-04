@@ -16,6 +16,7 @@ import { checklistRuleConditionApi } from "@/entities/checklist-rule-condition/a
 import type { ChecklistRuleCondition, ChecklistRuleConditionOperator } from "@/entities/checklist-rule-condition/model/types";
 import type { ChecklistVersion } from "@/entities/checklist-version/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { useUnsavedChanges } from "@/features/unsaved-changes/unsaved-changes-provider";
 import type { FormVersionData } from "../hooks/use-form-version";
 import { getFormsError } from "../hooks/use-forms";
 
@@ -58,6 +59,9 @@ export function ResultsRulesEditor({ version, data, onChanged }: Props) {
   const conditions = selectedRule ? data.conditionsByRule[selectedRule.id] ?? [] : [];
   const selectedConditionQuestion = data.questions.find((question) => question.id === conditionQuestionId) ?? null;
   const availableOperators = selectedConditionQuestion?.type === "number" ? numberOperators : equalityOperators;
+  const resultHasChanges = resultForm === "new" ? Boolean(resultTitle.trim() || resultMessage.trim()) : Boolean(resultForm && (resultTitle !== resultForm.title || resultMessage !== resultForm.message));
+  const ruleHasChanges = ruleForm === "new" ? Boolean(ruleName.trim()) : Boolean(ruleForm && (ruleName !== ruleForm.name || ruleResultId !== ruleForm.result_id || rulePriority !== String(ruleForm.priority)));
+  const conditionHasChanges = conditionForm === "new" ? Boolean(conditionQuestionId && (conditionOptionId || conditionValue)) : Boolean(conditionForm && (conditionQuestionId !== conditionForm.question_id || conditionOperator !== conditionForm.operator || conditionOptionId !== (conditionForm.option_id ?? "") || conditionValue !== (conditionForm.value ?? "") || conditionPosition !== String(conditionForm.position)));
 
   const openResult = (item: ChecklistResult | "new") => {
     setResultForm(item);
@@ -65,9 +69,8 @@ export function ResultsRulesEditor({ version, data, onChanged }: Props) {
     setResultMessage(item === "new" ? "" : item.message);
   };
 
-  const saveResult = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!resultForm || !resultTitle.trim()) return;
+  const saveResult = async (): Promise<boolean> => {
+    if (!resultForm || !resultTitle.trim()) return false;
     setBusy(true);
     try {
       const body = { title: resultTitle.trim(), message: resultMessage.trim() };
@@ -76,8 +79,10 @@ export function ResultsRulesEditor({ version, data, onChanged }: Props) {
       setResultForm(null);
       await onChanged();
       showAlert({ title: resultForm === "new" ? "Результат добавлен" : "Результат обновлён", type: "success" });
+      return true;
     } catch (cause) {
       showAlert({ title: "Не удалось сохранить результат", description: getFormsError(cause), type: "error" });
+      return false;
     } finally { setBusy(false); }
   };
 
@@ -88,10 +93,9 @@ export function ResultsRulesEditor({ version, data, onChanged }: Props) {
     setRulePriority(String(item === "new" ? 0 : item.priority));
   };
 
-  const saveRule = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const saveRule = async (): Promise<boolean> => {
     const priority = Number(rulePriority);
-    if (!ruleForm || !ruleName.trim() || !ruleResultId || !Number.isInteger(priority) || priority < 0 || priority > 2147483647) return;
+    if (!ruleForm || !ruleName.trim() || !ruleResultId || !Number.isInteger(priority) || priority < 0 || priority > 2147483647) return false;
     setBusy(true);
     try {
       const body = { name: ruleName.trim(), result_id: ruleResultId, priority };
@@ -102,8 +106,10 @@ export function ResultsRulesEditor({ version, data, onChanged }: Props) {
       setRuleForm(null);
       await onChanged();
       showAlert({ title: ruleForm === "new" ? "Правило добавлено" : "Правило обновлено", type: "success" });
+      return true;
     } catch (cause) {
       showAlert({ title: "Не удалось сохранить правило", description: getFormsError(cause), type: "error" });
+      return false;
     } finally { setBusy(false); }
   };
 
@@ -117,12 +123,11 @@ export function ResultsRulesEditor({ version, data, onChanged }: Props) {
     setConditionPosition(String(item === "new" ? Math.max(-1, ...conditions.map((condition) => condition.position)) + 1 : item.position));
   };
 
-  const saveCondition = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const saveCondition = async (): Promise<boolean> => {
     const position = Number(conditionPosition);
-    if (!selectedRule || !conditionForm || !selectedConditionQuestion || !Number.isInteger(position) || position < 0) return;
+    if (!selectedRule || !conditionForm || !selectedConditionQuestion || !Number.isInteger(position) || position < 0) return false;
     const isChoice = selectedConditionQuestion.type === "single" || selectedConditionQuestion.type === "multiple";
-    if ((isChoice && !conditionOptionId) || (!isChoice && !conditionValue.trim())) return;
+    if ((isChoice && !conditionOptionId) || (!isChoice && !conditionValue.trim())) return false;
 
     const request = isChoice
       ? { question_id: selectedConditionQuestion.id, option_id: conditionOptionId, operator: conditionOperator as "equals" | "not_equals", position }
@@ -135,10 +140,16 @@ export function ResultsRulesEditor({ version, data, onChanged }: Props) {
       setConditionForm(null);
       await onChanged();
       showAlert({ title: conditionForm === "new" ? "Условие добавлено" : "Условие обновлено", type: "success" });
+      return true;
     } catch (cause) {
       showAlert({ title: "Не удалось сохранить условие", description: getFormsError(cause), type: "error" });
+      return false;
     } finally { setBusy(false); }
   };
+
+  useUnsavedChanges({ active: resultHasChanges, onSave: saveResult, onDiscard: () => setResultForm(null) });
+  useUnsavedChanges({ active: ruleHasChanges, onSave: saveRule, onDiscard: () => setRuleForm(null) });
+  useUnsavedChanges({ active: conditionHasChanges, onSave: saveCondition, onDiscard: () => setConditionForm(null) });
 
   const remove = async () => {
     if (!deleteTarget) return;
@@ -176,9 +187,9 @@ export function ResultsRulesEditor({ version, data, onChanged }: Props) {
       })}
     </EntityColumn>
 
-    <ResultDialog open={resultForm !== null} item={resultForm} title={resultTitle} message={resultMessage} busy={busy} onTitleChange={setResultTitle} onMessageChange={setResultMessage} onClose={() => setResultForm(null)} onSubmit={saveResult} />
-    <RuleDialog open={ruleForm !== null} item={ruleForm} name={ruleName} resultId={ruleResultId} priority={rulePriority} results={data.results} busy={busy} onNameChange={setRuleName} onResultChange={setRuleResultId} onPriorityChange={setRulePriority} onClose={() => setRuleForm(null)} onSubmit={saveRule} />
-    <ConditionDialog open={conditionForm !== null} item={conditionForm} data={data} questionId={conditionQuestionId} operator={conditionOperator} optionId={conditionOptionId} value={conditionValue} position={conditionPosition} availableOperators={availableOperators} busy={busy} onQuestionChange={(value) => { setConditionQuestionId(value); setConditionOperator("equals"); setConditionOptionId(""); setConditionValue(""); }} onOperatorChange={setConditionOperator} onOptionChange={setConditionOptionId} onValueChange={setConditionValue} onPositionChange={setConditionPosition} onClose={() => setConditionForm(null)} onSubmit={saveCondition} />
+    <ResultDialog open={resultForm !== null} item={resultForm} title={resultTitle} message={resultMessage} busy={busy} onTitleChange={setResultTitle} onMessageChange={setResultMessage} onClose={() => setResultForm(null)} onSubmit={(event) => { event.preventDefault(); void saveResult(); }} />
+    <RuleDialog open={ruleForm !== null} item={ruleForm} name={ruleName} resultId={ruleResultId} priority={rulePriority} results={data.results} busy={busy} onNameChange={setRuleName} onResultChange={setRuleResultId} onPriorityChange={setRulePriority} onClose={() => setRuleForm(null)} onSubmit={(event) => { event.preventDefault(); void saveRule(); }} />
+    <ConditionDialog open={conditionForm !== null} item={conditionForm} data={data} questionId={conditionQuestionId} operator={conditionOperator} optionId={conditionOptionId} value={conditionValue} position={conditionPosition} availableOperators={availableOperators} busy={busy} onQuestionChange={(value) => { setConditionQuestionId(value); setConditionOperator("equals"); setConditionOptionId(""); setConditionValue(""); }} onOperatorChange={setConditionOperator} onOptionChange={setConditionOptionId} onValueChange={setConditionValue} onPositionChange={setConditionPosition} onClose={() => setConditionForm(null)} onSubmit={(event) => { event.preventDefault(); void saveCondition(); }} />
     <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open && !busy) setDeleteTarget(null); }}><DialogContent><DialogHeader><DialogTitle>Удалить элемент?</DialogTitle><DialogDescription>«{deleteTarget?.label}» будет удалён. Удаление результата также удалит связанные правила.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={busy}>Отмена</Button><Button variant="destructive" onClick={() => void remove()} disabled={busy}>{busy && <LoaderCircle className="animate-spin" />} Удалить</Button></DialogFooter></DialogContent></Dialog>
   </div>;
 }
@@ -190,16 +201,17 @@ function EntityColumn({ title, description, count, action, children }: { title: 
 function EmptyText({ children }: { children: React.ReactNode }) { return <p className="m-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{children}</p>; }
 
 type ResultDialogProps = { open: boolean; item: ChecklistResult | "new" | null; title: string; message: string; busy: boolean; onTitleChange: (value: string) => void; onMessageChange: (value: string) => void; onClose: () => void; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void };
-function ResultDialog(props: ResultDialogProps) { return <Dialog open={props.open} onOpenChange={(open) => { if (!open && !props.busy) props.onClose(); }}><DialogContent><form className="contents" onSubmit={props.onSubmit}><DialogHeader><DialogTitle>{props.item === "new" ? "Новый результат" : "Изменить результат"}</DialogTitle><DialogDescription>Этот текст увидит бригада после завершения формы.</DialogDescription></DialogHeader><FieldGroup className="gap-4"><Field className="gap-2"><FieldLabel htmlFor="result-title">Название</FieldLabel><Input id="result-title" value={props.title} onChange={(event) => props.onTitleChange(event.target.value)} required autoFocus /></Field><Field className="gap-2"><FieldLabel htmlFor="result-message">Сообщение</FieldLabel><Textarea id="result-message" value={props.message} onChange={(event) => props.onMessageChange(event.target.value)} /></Field></FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={props.onClose} disabled={props.busy}>Отмена</Button><Button type="submit" disabled={props.busy || !props.title.trim()}>{props.busy && <LoaderCircle className="animate-spin" />} Сохранить</Button></DialogFooter></form></DialogContent></Dialog>; }
+function ResultDialog(props: ResultDialogProps) { const changed = props.item === "new" ? Boolean(props.title.trim() || props.message.trim()) : Boolean(props.item && (props.title !== props.item.title || props.message !== props.item.message)); return <Dialog open={props.open} onOpenChange={(open) => { if (!open && !props.busy) props.onClose(); }}><DialogContent><form className="contents" onSubmit={props.onSubmit}><DialogHeader><DialogTitle>{props.item === "new" ? "Новый результат" : "Изменить результат"}</DialogTitle><DialogDescription>Этот текст увидит бригада после завершения формы.</DialogDescription></DialogHeader><FieldGroup className="gap-4"><Field className="gap-2"><FieldLabel htmlFor="result-title">Название</FieldLabel><Input id="result-title" value={props.title} onChange={(event) => props.onTitleChange(event.target.value)} required autoFocus /></Field><Field className="gap-2"><FieldLabel htmlFor="result-message">Сообщение</FieldLabel><Textarea id="result-message" value={props.message} onChange={(event) => props.onMessageChange(event.target.value)} /></Field></FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={props.onClose} disabled={props.busy}>Отмена</Button>{changed && <Button type="submit" disabled={props.busy || !props.title.trim()}>{props.busy && <LoaderCircle className="animate-spin" />} {props.item === "new" ? "Добавить" : "Сохранить"}</Button>}</DialogFooter></form></DialogContent></Dialog>; }
 
 type RuleDialogProps = { open: boolean; item: ChecklistRule | "new" | null; name: string; resultId: string; priority: string; results: ChecklistResult[]; busy: boolean; onNameChange: (value: string) => void; onResultChange: (value: string) => void; onPriorityChange: (value: string) => void; onClose: () => void; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void };
-function RuleDialog(props: RuleDialogProps) { return <Dialog open={props.open} onOpenChange={(open) => { if (!open && !props.busy) props.onClose(); }}><DialogContent><form className="contents" onSubmit={props.onSubmit}><DialogHeader><DialogTitle>{props.item === "new" ? "Новое правило" : "Изменить правило"}</DialogTitle><DialogDescription>Чем выше приоритет, тем раньше проверяется правило.</DialogDescription></DialogHeader><FieldGroup className="gap-4"><Field className="gap-2"><FieldLabel htmlFor="rule-name">Название</FieldLabel><Input id="rule-name" value={props.name} onChange={(event) => props.onNameChange(event.target.value)} required autoFocus /></Field><Field className="gap-2"><FieldLabel htmlFor="rule-result">Результат</FieldLabel><Select value={props.resultId || null} onValueChange={(value) => props.onResultChange(value ?? "")}><SelectTrigger id="rule-result" className="w-full"><SelectValue placeholder="Выберите результат" /></SelectTrigger><SelectContent>{props.results.map((result) => <SelectItem key={result.id} value={result.id}>{result.title || "Без названия"}</SelectItem>)}</SelectContent></Select></Field><Field className="gap-2"><FieldLabel htmlFor="rule-priority">Приоритет</FieldLabel><Input id="rule-priority" type="number" min="0" max="2147483647" step="1" value={props.priority} onChange={(event) => props.onPriorityChange(event.target.value)} required /><FieldDescription>Одно правило без условий должно иметь самый низкий приоритет.</FieldDescription></Field></FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={props.onClose} disabled={props.busy}>Отмена</Button><Button type="submit" disabled={props.busy || !props.name.trim() || !props.resultId}>{props.busy && <LoaderCircle className="animate-spin" />} Сохранить</Button></DialogFooter></form></DialogContent></Dialog>; }
+function RuleDialog(props: RuleDialogProps) { const changed = props.item === "new" ? Boolean(props.name.trim()) : Boolean(props.item && (props.name !== props.item.name || props.resultId !== props.item.result_id || props.priority !== String(props.item.priority))); return <Dialog open={props.open} onOpenChange={(open) => { if (!open && !props.busy) props.onClose(); }}><DialogContent><form className="contents" onSubmit={props.onSubmit}><DialogHeader><DialogTitle>{props.item === "new" ? "Новое правило" : "Изменить правило"}</DialogTitle><DialogDescription>Чем выше приоритет, тем раньше проверяется правило.</DialogDescription></DialogHeader><FieldGroup className="gap-4"><Field className="gap-2"><FieldLabel htmlFor="rule-name">Название</FieldLabel><Input id="rule-name" value={props.name} onChange={(event) => props.onNameChange(event.target.value)} required autoFocus /></Field><Field className="gap-2"><FieldLabel htmlFor="rule-result">Результат</FieldLabel><Select value={props.resultId || null} onValueChange={(value) => props.onResultChange(value ?? "")}><SelectTrigger id="rule-result" className="w-full"><SelectValue placeholder="Выберите результат" /></SelectTrigger><SelectContent>{props.results.map((result) => <SelectItem key={result.id} value={result.id}>{result.title || "Без названия"}</SelectItem>)}</SelectContent></Select></Field><Field className="gap-2"><FieldLabel htmlFor="rule-priority">Приоритет</FieldLabel><Input id="rule-priority" type="number" min="0" max="2147483647" step="1" value={props.priority} onChange={(event) => props.onPriorityChange(event.target.value)} required /><FieldDescription>Одно правило без условий должно иметь самый низкий приоритет.</FieldDescription></Field></FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={props.onClose} disabled={props.busy}>Отмена</Button>{changed && <Button type="submit" disabled={props.busy || !props.name.trim() || !props.resultId}>{props.busy && <LoaderCircle className="animate-spin" />} {props.item === "new" ? "Добавить" : "Сохранить"}</Button>}</DialogFooter></form></DialogContent></Dialog>; }
 
 type ConditionDialogProps = { open: boolean; item: ChecklistRuleCondition | "new" | null; data: FormVersionData; questionId: string; operator: ChecklistRuleConditionOperator; optionId: string; value: string; position: string; availableOperators: ChecklistRuleConditionOperator[]; busy: boolean; onQuestionChange: (value: string) => void; onOperatorChange: (value: ChecklistRuleConditionOperator) => void; onOptionChange: (value: string) => void; onValueChange: (value: string) => void; onPositionChange: (value: string) => void; onClose: () => void; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void };
 function ConditionDialog(props: ConditionDialogProps) {
   const question = props.data.questions.find((item) => item.id === props.questionId);
   const isChoice = question?.type === "single" || question?.type === "multiple";
   const isBoolean = question?.type === "boolean";
+  const changed = props.item === "new" ? Boolean(props.questionId && (props.optionId || props.value)) : Boolean(props.item && (props.questionId !== props.item.question_id || props.operator !== props.item.operator || props.optionId !== (props.item.option_id ?? "") || props.value !== (props.item.value ?? "") || props.position !== String(props.item.position)));
   return <Dialog open={props.open} onOpenChange={(open) => { if (!open && !props.busy) props.onClose(); }}><DialogContent><form className="contents" onSubmit={props.onSubmit}><DialogHeader><DialogTitle>{props.item === "new" ? "Новое условие" : "Изменить условие"}</DialogTitle><DialogDescription>Все условия одного правила должны выполниться одновременно.</DialogDescription></DialogHeader><FieldGroup className="gap-4">
     <Field className="gap-2"><FieldLabel htmlFor="condition-question">Вопрос</FieldLabel><Select value={props.questionId || null} onValueChange={(value) => props.onQuestionChange(value ?? "")}><SelectTrigger id="condition-question" className="w-full"><SelectValue placeholder="Выберите вопрос" /></SelectTrigger><SelectContent>{props.data.questions.map((item) => <SelectItem key={item.id} value={item.id}>{item.question}</SelectItem>)}</SelectContent></Select></Field>
     <Field className="gap-2"><FieldLabel htmlFor="condition-operator">Оператор</FieldLabel><Select value={props.operator} onValueChange={(value) => props.onOperatorChange(value as ChecklistRuleConditionOperator)}><SelectTrigger id="condition-operator" className="w-full"><SelectValue /></SelectTrigger><SelectContent>{props.availableOperators.map((operator) => <SelectItem key={operator} value={operator}>{operatorNames[operator]}</SelectItem>)}</SelectContent></Select></Field>
@@ -207,5 +219,5 @@ function ConditionDialog(props: ConditionDialogProps) {
       : isBoolean ? <Field className="gap-2"><FieldLabel htmlFor="condition-value">Значение</FieldLabel><Select value={props.value || null} onValueChange={(value) => props.onValueChange(value ?? "")}><SelectTrigger id="condition-value" className="w-full"><SelectValue placeholder="Выберите значение" /></SelectTrigger><SelectContent><SelectItem value="true">Да</SelectItem><SelectItem value="false">Нет</SelectItem></SelectContent></Select></Field>
       : <Field className="gap-2"><FieldLabel htmlFor="condition-value">Значение</FieldLabel><Input id="condition-value" type={question?.type === "number" ? "number" : "text"} value={props.value} onChange={(event) => props.onValueChange(event.target.value)} required /></Field>}
     <Field className="gap-2"><FieldLabel htmlFor="condition-position">Позиция</FieldLabel><Input id="condition-position" type="number" min="0" step="1" value={props.position} onChange={(event) => props.onPositionChange(event.target.value)} required /></Field>
-  </FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={props.onClose} disabled={props.busy}>Отмена</Button><Button type="submit" disabled={props.busy || !props.questionId || (isChoice ? !props.optionId : !props.value.trim())}>{props.busy && <LoaderCircle className="animate-spin" />} Сохранить</Button></DialogFooter></form></DialogContent></Dialog>;
+  </FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={props.onClose} disabled={props.busy}>Отмена</Button>{changed && <Button type="submit" disabled={props.busy || !props.questionId || (isChoice ? !props.optionId : !props.value.trim())}>{props.busy && <LoaderCircle className="animate-spin" />} {props.item === "new" ? "Добавить" : "Сохранить"}</Button>}</DialogFooter></form></DialogContent></Dialog>;
 }

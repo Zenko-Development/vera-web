@@ -7,8 +7,33 @@ import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+function Dialog({
+  children,
+  open,
+  onOpenChangeComplete,
+  ...props
+}: DialogPrimitive.Root.Props) {
+  const [exitChildren, setExitChildren] = React.useState<
+    DialogPrimitive.Root.Props["children"]
+  >(() => children)
+
+  if (open !== false && exitChildren !== children) {
+    setExitChildren(() => children)
+  }
+
+  return (
+    <DialogPrimitive.Root
+      data-slot="dialog"
+      open={open}
+      onOpenChangeComplete={(nextOpen) => {
+        onOpenChangeComplete?.(nextOpen)
+        if (!nextOpen) setExitChildren(() => null)
+      }}
+      {...props}
+    >
+      {open === false ? exitChildren : children}
+    </DialogPrimitive.Root>
+  )
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {

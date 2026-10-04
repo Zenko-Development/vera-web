@@ -1,6 +1,6 @@
 import type { Rfc3339DateTime, UUID } from "@/shared/api/types";
 
-export type DeviceStatus = "active" | "inactive";
+export type DeviceStatus = "active" | "inactive" | "disabled";
 
 export type Device = {
   id: UUID;
@@ -15,4 +15,6 @@ export type DeviceCredentials = {
   device: Device;
   /** Returned only during provisioning or secret rotation. */
   auth_secret: string;
+  /** Exact JSON string that must be encoded into the QR code unchanged. */
+  qr_payload: string;
 };

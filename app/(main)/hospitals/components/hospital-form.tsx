@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, X } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,10 @@ import type {
 } from "@/entities/hospital/model/types";
 import type { Sickness } from "@/entities/sickness/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import {
+  useUnsavedChanges,
+  useUnsavedNavigation,
+} from "@/features/unsaved-changes/unsaved-changes-provider";
 import { getHospitalsErrorMessage } from "../hooks/use-hospitals";
 import { AddressSearch } from "./address-search";
 
@@ -156,9 +160,11 @@ function HospitalFormFields({
   const [form, setForm] = useState<FormState>(() => getInitialForm(target));
   const [errors, setErrors] = useState<Partial<Record<FormField, string>>>({});
   const [selectedSicknessIds, setSelectedSicknessIds] = useState<string[]>([]);
+  const [savedSicknessIds, setSavedSicknessIds] = useState<string[]>([]);
   const [isLoadingSicknesses, setIsLoadingSicknesses] = useState(target !== "new");
   const [isSaving, setIsSaving] = useState(false);
   const isEditing = target !== "new";
+  const { requestNavigation } = useUnsavedNavigation();
 
   useEffect(() => {
     if (target === "new") return;
@@ -166,7 +172,11 @@ function HospitalFormFields({
     let isActive = true;
     onLoadSicknesses(target.id)
       .then((linked) => {
-        if (isActive) setSelectedSicknessIds(linked.map((item) => item.id));
+        if (isActive) {
+          const ids = linked.map((item) => item.id);
+          setSelectedSicknessIds(ids);
+          setSavedSicknessIds(ids);
+        }
       })
       .catch((error) => {
         if (!isActive) return;
@@ -198,6 +208,16 @@ function HospitalFormFields({
     );
   };
 
+  const initialForm = useMemo(() => getInitialForm(target), [target]);
+  const hasChanges = useMemo(() => {
+    const formChanged = (Object.keys(form) as FormField[]).some(
+      (field) => form[field] !== initialForm[field],
+    );
+    const currentSicknesses = [...selectedSicknessIds].sort().join(",");
+    const initialSicknesses = [...savedSicknessIds].sort().join(",");
+    return formChanged || currentSicknesses !== initialSicknesses;
+  }, [form, initialForm, savedSicknessIds, selectedSicknessIds]);
+
   const validate = () => {
     const nextErrors: Partial<Record<FormField, string>> = {};
     const latitude = form.latitude.trim();
@@ -224,9 +244,8 @@ function HospitalFormFields({
     return Object.keys(nextErrors).length === 0;
   };
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!validate()) return;
+  const submit = async (): Promise<boolean> => {
+    if (!validate()) return false;
 
     const data: UpdateHospitalRequest = {
       name: form.name.trim(),
@@ -251,16 +270,32 @@ function HospitalFormFields({
         type: "success",
       });
       onOpenChange(false);
+      return true;
     } catch (error) {
       showAlert({
         title: target === "new" ? "Не удалось создать центр" : "Не удалось обновить центр",
         description: getHospitalsErrorMessage(error),
         type: "error",
       });
+      return false;
     } finally {
       setIsSaving(false);
       onBusyChange(false);
     }
+  };
+
+  useUnsavedChanges({
+    active: hasChanges,
+    onSave: submit,
+    onDiscard: () => {
+      setForm(initialForm);
+      setSelectedSicknessIds(savedSicknessIds);
+    },
+  });
+
+  const requestClose = () => {
+    if (hasChanges) requestNavigation(() => onOpenChange(false));
+    else onOpenChange(false);
   };
 
   const disabled = isSaving || isLoadingSicknesses;
@@ -280,7 +315,7 @@ function HospitalFormFields({
             type="button"
             variant="ghost"
             size="icon-sm"
-            onClick={() => onOpenChange(false)}
+            onClick={requestClose}
             disabled={isSaving}
           >
             <X />
@@ -288,7 +323,7 @@ function HospitalFormFields({
           </Button>
         </DrawerHeader>
 
-        <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form onSubmit={(event) => { event.preventDefault(); void submit(); }} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 space-y-7 overflow-y-auto p-4">
             <FormSection number="1" title="Основные данные" description="Название и тип учреждения">
               <FormInput
@@ -447,18 +482,20 @@ function HospitalFormFields({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={requestClose}
               disabled={isSaving}
             >
               Отмена
             </Button>
-            <Button
-              type="submit"
-              disabled={disabled || facilityTypes.length === 0}
-            >
-              {isSaving && <LoaderCircle className="animate-spin" />}
-              {isEditing ? "Сохранить изменения" : "Создать центр"}
-            </Button>
+            {(!isEditing || hasChanges) && (
+              <Button
+                type="submit"
+                disabled={disabled || facilityTypes.length === 0}
+              >
+                {isSaving && <LoaderCircle className="animate-spin" />}
+                {isEditing ? "Сохранить изменения" : "Создать центр"}
+              </Button>
+            )}
           </DrawerFooter>
         </form>
     </DrawerContent>

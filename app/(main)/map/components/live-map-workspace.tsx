@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { hospitalArrivalApi } from "@/entities/hospital-arrival/api/hospital-arrival.api";
 import type { HospitalArrival } from "@/entities/hospital-arrival/model/types";
+import { fleetLiveApi } from "@/entities/fleet-live/api/fleet-live.api";
+import type { FleetLiveVehicle } from "@/entities/fleet-live/model/types";
 import { hospitalApi } from "@/entities/hospital/api/hospital.api";
 import type { Hospital } from "@/entities/hospital/model/types";
 import { getArrivalCoordinates } from "./map-data";
@@ -44,6 +46,7 @@ function hasCoordinates(hospital: Hospital): boolean {
 export function LiveMapWorkspace() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [arrivals, setArrivals] = useState<HospitalArrival[]>([]);
+  const [fleet, setFleet] = useState<FleetLiveVehicle[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
@@ -59,11 +62,14 @@ export function LiveMapWorkspace() {
   }, []);
 
   const loadVehicles = useCallback(async () => {
-    try {
-      setArrivals(await hospitalArrivalApi.list());
+    const [fleetResult, arrivalsResult] = await Promise.allSettled([
+      fleetLiveApi.list(),
+      hospitalArrivalApi.list(),
+    ]);
+    if (fleetResult.status === "fulfilled") setFleet(fleetResult.value);
+    if (arrivalsResult.status === "fulfilled") setArrivals(arrivalsResult.value);
+    if (fleetResult.status === "fulfilled" || arrivalsResult.status === "fulfilled") {
       setLastUpdatedAt(new Date());
-    } catch {
-      // Polling errors should not clear the last known arrivals.
     }
   }, []);
 
@@ -90,8 +96,10 @@ export function LiveMapWorkspace() {
     [hospitals],
   );
   const mappedVehiclesCount = useMemo(
-    () => arrivals.filter((arrival) => getArrivalCoordinates(arrival)).length,
-    [arrivals],
+    () => fleet
+      ? fleet.filter((vehicle) => Number.isFinite(vehicle.latitude) && Number.isFinite(vehicle.longitude)).length
+      : arrivals.filter((arrival) => getArrivalCoordinates(arrival)).length,
+    [arrivals, fleet],
   );
 
   const refresh = async () => {
@@ -123,7 +131,7 @@ export function LiveMapWorkspace() {
         >
           <Ambulance />
           Машины
-          <span className="opacity-60">{mappedVehiclesCount}</span>
+          <span className="opacity-60">{fleet?.length ?? mappedVehiclesCount}</span>
         </Button>
         <div className="ml-auto flex items-center gap-3">
           {lastUpdatedAt && (
@@ -154,6 +162,7 @@ export function LiveMapWorkspace() {
           <LiveMap
             hospitals={showHospitals ? mappedHospitals : []}
             arrivals={showVehicles ? arrivals : []}
+            fleet={showVehicles ? fleet ?? undefined : []}
           />
         </div>
 

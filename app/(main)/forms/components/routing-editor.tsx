@@ -12,6 +12,7 @@ import type { ChecklistResultRoutingRequest, ChecklistResultRoutingType } from "
 import type { ChecklistResult } from "@/entities/checklist-result/model/types";
 import type { ChecklistVersion } from "@/entities/checklist-version/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { useUnsavedChanges, useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 import type { FormVersionData } from "../hooks/use-form-version";
 import { getFormsError } from "../hooks/use-forms";
 
@@ -25,6 +26,7 @@ type Props = { version: ChecklistVersion; data: FormVersionData; onChanged: () =
 
 export function RoutingEditor({ version, data, onChanged }: Props) {
   const showAlert = useAlert();
+  const { requestNavigation } = useUnsavedNavigation();
   const editable = version.status === "draft";
   const [editingResult, setEditingResult] = useState<ChecklistResult | null>(null);
   const [routingType, setRoutingType] = useState<ChecklistResultRoutingType>("fixed");
@@ -32,6 +34,14 @@ export function RoutingEditor({ version, data, onChanged }: Props) {
   const [facilityTypeId, setFacilityTypeId] = useState("");
   const [deleteResult, setDeleteResult] = useState<ChecklistResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const currentRouting = editingResult ? data.routingByResult[editingResult.id] : undefined;
+  const routingHasChanges = Boolean(
+    editingResult &&
+    (!currentRouting ||
+      routingType !== currentRouting.routing_type ||
+      (routingType === "fixed" && hospitalId !== currentRouting.hospital_id) ||
+      (routingType === "by_tag" && facilityTypeId !== currentRouting.facility_type_id)),
+  );
 
   const openEditor = (result: ChecklistResult) => {
     const routing = data.routingByResult[result.id];
@@ -41,15 +51,14 @@ export function RoutingEditor({ version, data, onChanged }: Props) {
     setFacilityTypeId(routing?.routing_type === "by_tag" ? routing.facility_type_id : "");
   };
 
-  const save = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!editingResult) return;
+  const save = async (): Promise<boolean> => {
+    if (!editingResult) return false;
     let request: ChecklistResultRoutingRequest;
     if (routingType === "fixed") {
-      if (!hospitalId) return;
+      if (!hospitalId) return false;
       request = { routing_type: "fixed", hospital_id: hospitalId };
     } else if (routingType === "by_tag") {
-      if (!facilityTypeId) return;
+      if (!facilityTypeId) return false;
       request = { routing_type: "by_tag", facility_type_id: facilityTypeId };
     } else {
       request = { routing_type: "by_service_area" };
@@ -63,9 +72,26 @@ export function RoutingEditor({ version, data, onChanged }: Props) {
       setEditingResult(null);
       await onChanged();
       showAlert({ title: "Маршрутизация сохранена", type: "success" });
+      return true;
     } catch (cause) {
       showAlert({ title: "Не удалось сохранить маршрутизацию", description: getFormsError(cause), type: "error" });
+      return false;
     } finally { setBusy(false); }
+  };
+
+  useUnsavedChanges({
+    active: routingHasChanges,
+    onSave: save,
+    onDiscard: () => setEditingResult(null),
+  });
+
+  const closeEditor = () => {
+    if (busy) return;
+    if (routingHasChanges) {
+      requestNavigation(() => setEditingResult(null));
+      return;
+    }
+    setEditingResult(null);
   };
 
   const remove = async () => {
@@ -101,12 +127,12 @@ export function RoutingEditor({ version, data, onChanged }: Props) {
       </Card>;
     })}
 
-    <Dialog open={editingResult !== null} onOpenChange={(open) => { if (!open && !busy) setEditingResult(null); }}><DialogContent><form className="contents" onSubmit={save}><DialogHeader><DialogTitle>Маршрутизация результата</DialogTitle><DialogDescription>{editingResult?.title}. Выберите, как определить больницу для бригады.</DialogDescription></DialogHeader><FieldGroup className="gap-4">
+    <Dialog open={editingResult !== null} onOpenChange={(open) => { if (!open) closeEditor(); }}><DialogContent><form className="contents" onSubmit={(event) => { event.preventDefault(); void save(); }}><DialogHeader><DialogTitle>Маршрутизация результата</DialogTitle><DialogDescription>{editingResult?.title}. Выберите, как определить больницу для бригады.</DialogDescription></DialogHeader><FieldGroup className="gap-4">
       <Field className="gap-2"><FieldLabel htmlFor="routing-type">Способ маршрутизации</FieldLabel><Select value={routingType} onValueChange={(value) => { setRoutingType(value as ChecklistResultRoutingType); setHospitalId(""); setFacilityTypeId(""); }} disabled={busy}><SelectTrigger id="routing-type" className="w-full"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(routingNames).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></Field>
       {routingType === "fixed" && <Field className="gap-2"><FieldLabel htmlFor="routing-hospital">Больница</FieldLabel><Select value={hospitalId || null} onValueChange={(value) => setHospitalId(value ?? "")} disabled={busy}><SelectTrigger id="routing-hospital" className="w-full"><SelectValue placeholder="Выберите больницу" /></SelectTrigger><SelectContent>{data.hospitals.map((hospital) => <SelectItem key={hospital.id} value={hospital.id}>{hospital.name}</SelectItem>)}</SelectContent></Select></Field>}
       {routingType === "by_tag" && <Field className="gap-2"><FieldLabel htmlFor="routing-facility">Тип учреждения</FieldLabel><Select value={facilityTypeId || null} onValueChange={(value) => setFacilityTypeId(value ?? "")} disabled={busy}><SelectTrigger id="routing-facility" className="w-full"><SelectValue placeholder="Выберите тип" /></SelectTrigger><SelectContent>{data.facilityTypes.map((type) => <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>)}</SelectContent></Select><FieldDescription>Бригада выберет одну больницу из найденных кандидатов.</FieldDescription></Field>}
       {routingType === "by_service_area" && <FieldDescription>Сервер выберет больницу по активной зоне с наибольшим приоритетом.</FieldDescription>}
-    </FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={() => setEditingResult(null)} disabled={busy}>Отмена</Button><Button type="submit" disabled={busy || (routingType === "fixed" && !hospitalId) || (routingType === "by_tag" && !facilityTypeId)}>{busy && <LoaderCircle className="animate-spin" />} Сохранить</Button></DialogFooter></form></DialogContent></Dialog>
+    </FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={closeEditor} disabled={busy}>Отмена</Button>{routingHasChanges && <Button type="submit" disabled={busy || (routingType === "fixed" && !hospitalId) || (routingType === "by_tag" && !facilityTypeId)}>{busy && <LoaderCircle className="animate-spin" />} Сохранить</Button>}</DialogFooter></form></DialogContent></Dialog>
     <Dialog open={deleteResult !== null} onOpenChange={(open) => { if (!open && !busy) setDeleteResult(null); }}><DialogContent><DialogHeader><DialogTitle>Удалить маршрутизацию?</DialogTitle><DialogDescription>Для результата «{deleteResult?.title}» больше не будет задан способ выбора больницы.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setDeleteResult(null)} disabled={busy}>Отмена</Button><Button variant="destructive" onClick={() => void remove()} disabled={busy}>{busy && <LoaderCircle className="animate-spin" />} Удалить</Button></DialogFooter></DialogContent></Dialog>
   </div>;
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { checklistOptionApi } from "@/entities/checklist-option/api/checklist-option.api";
 import type { ChecklistOption } from "@/entities/checklist-option/model/types";
 import { checklistQuestionApi } from "@/entities/checklist-question/api/checklist-question.api";
 import type { ChecklistQuestion } from "@/entities/checklist-question/model/types";
@@ -25,10 +24,6 @@ import { equipmentApi } from "@/entities/equipment/api/equipment.api";
 import type { Equipment } from "@/entities/equipment/model/types";
 import { operatingTypeApi } from "@/entities/operating-type/api/operating-type.api";
 import type { OperatingType } from "@/entities/operating-type/model/types";
-import {
-  readKnownQuestionIds,
-  rememberQuestionId,
-} from "../lib/known-questions";
 import { getFormsError } from "./use-forms";
 
 export type FormVersionData = {
@@ -64,7 +59,8 @@ const emptyData: FormVersionData = {
 };
 
 async function loadVersionData(versionId: string): Promise<FormVersionData> {
-  const [results, rules, hospitals, facilityTypes, equipmentTypes, operatingTypes] = await Promise.all([
+  const [questionsWithOptions, results, rules, hospitals, facilityTypes, equipmentTypes, operatingTypes] = await Promise.all([
+    checklistQuestionApi.list(versionId),
     checklistResultApi.list(versionId),
     checklistRuleApi.list(versionId),
     hospitalApi.list(),
@@ -87,36 +83,22 @@ async function loadVersionData(versionId: string): Promise<FormVersionData> {
     rules.map((rule, index) => [rule.id, conditionLists[index]]),
   );
 
-  const questionIds = new Set(readKnownQuestionIds(versionId));
-  conditionLists.flat().forEach((condition) => {
-    questionIds.add(condition.question_id);
-  });
-
-  const questionResponses = await Promise.allSettled(
-    [...questionIds].map((id) => checklistQuestionApi.getById(id)),
-  );
-  const questions = questionResponses.flatMap((response) => {
-    if (
-      response.status !== "fulfilled" ||
-      response.value.checklist_version_id !== versionId
-    ) {
-      return [];
-    }
-    rememberQuestionId(versionId, response.value.id);
-    return [response.value];
-  });
-  questions.sort((left, right) => left.position - right.position);
-
-  const choiceQuestions = questions.filter(
-    (question) => question.type === "single" || question.type === "multiple",
-  );
-  const optionLists = await Promise.all(
-    choiceQuestions.map((question) => checklistOptionApi.list(question.id)),
-  );
+  const questions = questionsWithOptions
+    .map((question) => ({
+      id: question.id,
+      checklist_version_id: question.checklist_version_id,
+      question: question.question,
+      type: question.type,
+      position: question.position,
+      required: question.required,
+      created_at: question.created_at,
+      updated_at: question.updated_at,
+    }))
+    .sort((left, right) => left.position - right.position);
   const optionsByQuestion = Object.fromEntries(
-    choiceQuestions.map((question, index) => [
+    questionsWithOptions.map((question) => [
       question.id,
-      [...optionLists[index]].sort((left, right) => left.position - right.position),
+      [...question.options].sort((left, right) => left.position - right.position),
     ]),
   );
 
@@ -146,9 +128,7 @@ async function loadVersionData(versionId: string): Promise<FormVersionData> {
     operatingTypes,
     hospitals,
     facilityTypes: facilityTypes ?? [],
-    unavailableQuestionCount: questionResponses.filter(
-      (response) => response.status === "rejected",
-    ).length,
+    unavailableQuestionCount: 0,
   };
 }
 

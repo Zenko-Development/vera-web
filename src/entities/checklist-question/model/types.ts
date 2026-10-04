@@ -1,4 +1,5 @@
 import type { Rfc3339DateTime, UUID } from "@/shared/api/types";
+import type { ChecklistOption } from "@/entities/checklist-option/model/types";
 
 export type ChecklistQuestionType =
   | "single"
@@ -16,6 +17,10 @@ export type ChecklistQuestion = {
   required: boolean;
   created_at: Rfc3339DateTime;
   updated_at: Rfc3339DateTime;
+};
+
+export type ChecklistQuestionWithOptions = ChecklistQuestion & {
+  options: ChecklistOption[];
 };
 
 export type CreateChecklistQuestionRequest = {

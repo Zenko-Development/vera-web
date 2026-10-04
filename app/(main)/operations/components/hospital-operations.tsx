@@ -215,7 +215,7 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
     setAreaDialogOpen(true);
   };
   const saveArea = async (body: HospitalServiceAreaRequest) => {
-    if (!areaTarget || !hospitalId) return;
+    if (!areaTarget || !hospitalId) return false;
     const isCreating = areaTarget === "new";
     setBusy(true);
     try {
@@ -223,7 +223,8 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
       setAreas((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
       setAreaDialogOpen(false);
       showAlert({ title: isCreating ? "Зона создана" : "Зона обновлена", description: saved.name, type: "success" });
-    } catch (cause) { showAlert({ title: "Не удалось сохранить зону", description: message(cause), type: "error" }); }
+      return true;
+    } catch (cause) { showAlert({ title: "Не удалось сохранить зону", description: message(cause), type: "error" }); return false; }
     finally { setBusy(false); }
   };
   const removeArea = async (area: HospitalServiceArea) => { setBusy(true); try { await hospitalServiceAreaApi.delete(area.id); setAreas((current) => current.filter((item) => item.id !== area.id)); showAlert({ title: "Зона удалена", description: area.name, type: "success" }); } catch (cause) { showAlert({ title: "Не удалось удалить зону", description: message(cause), type: "error" }); } finally { setBusy(false); } };

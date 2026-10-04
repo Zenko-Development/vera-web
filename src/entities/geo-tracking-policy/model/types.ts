@@ -2,6 +2,7 @@ import type { Rfc3339DateTime } from "@/shared/api/types";
 
 export type GeoTrackingPolicy = {
   active_call_interval_seconds: number;
+  device_location_interval_seconds: number;
   max_accuracy_meters: number;
   location_freshness_seconds: number;
   eta_average_speed_kmh: number;

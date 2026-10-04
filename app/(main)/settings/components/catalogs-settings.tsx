@@ -38,6 +38,7 @@ import type { OperatingType } from "@/entities/operating-type/model/types";
 import { sicknessApi } from "@/entities/sickness/api/sickness.api";
 import type { Sickness } from "@/entities/sickness/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { useUnsavedChanges, useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 import { ApiError } from "@/shared/api/types";
 import { SettingsSection, SettingsSectionHeader } from "./settings-section";
 
@@ -68,6 +69,7 @@ function message(error: unknown): string {
 
 export function CatalogsSettings() {
   const showAlert = useAlert();
+  const { requestNavigation } = useUnsavedNavigation();
   const [kind, setKind] = useState<CatalogKind>("sicknesses");
   const [catalogs, setCatalogs] = useState<CatalogState>(emptyCatalogs);
   const [query, setQuery] = useState("");
@@ -126,9 +128,17 @@ export function CatalogsSettings() {
     setDialogError(null);
   };
 
-  const save = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!editing || !name.trim() || (kind === "facilityTypes" && !code.trim())) return;
+  const hasEditorChanges = Boolean(
+    editing &&
+    (editing === "new"
+      ? name.trim() || description.trim() || code.trim()
+      : name !== editing.name ||
+        description !== editing.description ||
+        (kind === "facilityTypes" && code !== ("code" in editing ? editing.code : ""))),
+  );
+
+  const save = async (): Promise<boolean> => {
+    if (!editing || !name.trim() || (kind === "facilityTypes" && !code.trim())) return false;
     setBusy(true);
     setDialogError(null);
     try {
@@ -155,11 +165,25 @@ export function CatalogsSettings() {
       }));
       setEditing(null);
       showAlert({ title: editing === "new" ? "Запись создана" : "Изменения сохранены", type: "success" });
+      return true;
     } catch (cause) {
       setDialogError(message(cause));
+      return false;
     } finally {
       setBusy(false);
     }
+  };
+
+  useUnsavedChanges({
+    active: hasEditorChanges,
+    onSave: save,
+    onDiscard: () => setEditing(null),
+  });
+
+  const closeEditor = () => {
+    if (busy) return;
+    if (hasEditorChanges) requestNavigation(() => setEditing(null));
+    else setEditing(null);
   };
 
   const remove = async () => {
@@ -283,8 +307,8 @@ export function CatalogsSettings() {
         </div>
       </SettingsSection>
 
-      <Dialog open={editing !== null} onOpenChange={(open) => { if (!open && !busy) setEditing(null); }}>
-        <DialogContent><form className="contents" onSubmit={save}><DialogHeader><DialogTitle>{editing === "new" ? `Добавить ${meta.itemName}` : `Изменить ${meta.itemName}`}</DialogTitle><DialogDescription>Значение станет доступно во всех связанных разделах.</DialogDescription></DialogHeader><FieldGroup className="gap-4"><Field className="gap-2"><FieldLabel htmlFor="catalog-item-name">Название</FieldLabel><Input id="catalog-item-name" value={name} onChange={(event) => { setName(event.target.value); setDialogError(null); }} required autoFocus disabled={busy} /></Field>{kind === "facilityTypes" && <Field className="gap-2"><FieldLabel htmlFor="catalog-item-code">Код</FieldLabel><Input id="catalog-item-code" value={code} onChange={(event) => { setCode(event.target.value); setDialogError(null); }} required disabled={busy} placeholder="Введите системный код" /></Field>}<Field className="gap-2"><FieldLabel htmlFor="catalog-item-description">Описание</FieldLabel><Textarea id="catalog-item-description" value={description} onChange={(event) => setDescription(event.target.value)} disabled={busy} /></Field>{dialogError && <FieldError>{dialogError}</FieldError>}</FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={() => setEditing(null)} disabled={busy}>Отмена</Button><Button type="submit" disabled={busy || !name.trim() || (kind === "facilityTypes" && !code.trim())}>{busy && <LoaderCircle className="animate-spin" />}Сохранить</Button></DialogFooter></form></DialogContent>
+      <Dialog open={editing !== null} onOpenChange={(open) => { if (!open) closeEditor(); }}>
+        <DialogContent><form className="contents" onSubmit={(event) => { event.preventDefault(); void save(); }}><DialogHeader><DialogTitle>{editing === "new" ? `Добавить ${meta.itemName}` : `Изменить ${meta.itemName}`}</DialogTitle><DialogDescription>Значение станет доступно во всех связанных разделах.</DialogDescription></DialogHeader><FieldGroup className="gap-4"><Field className="gap-2"><FieldLabel htmlFor="catalog-item-name">Название</FieldLabel><Input id="catalog-item-name" value={name} onChange={(event) => { setName(event.target.value); setDialogError(null); }} required autoFocus disabled={busy} /></Field>{kind === "facilityTypes" && <Field className="gap-2"><FieldLabel htmlFor="catalog-item-code">Код</FieldLabel><Input id="catalog-item-code" value={code} onChange={(event) => { setCode(event.target.value); setDialogError(null); }} required disabled={busy} placeholder="Введите системный код" /></Field>}<Field className="gap-2"><FieldLabel htmlFor="catalog-item-description">Описание</FieldLabel><Textarea id="catalog-item-description" value={description} onChange={(event) => setDescription(event.target.value)} disabled={busy} /></Field>{dialogError && <FieldError>{dialogError}</FieldError>}</FieldGroup><DialogFooter><Button type="button" variant="outline" onClick={closeEditor} disabled={busy}>Отмена</Button>{hasEditorChanges && <Button type="submit" disabled={busy || !name.trim() || (kind === "facilityTypes" && !code.trim())}>{busy && <LoaderCircle className="animate-spin" />}{editing === "new" ? "Добавить" : "Сохранить"}</Button>}</DialogFooter></form></DialogContent>
       </Dialog>
 
       <Dialog open={deleting !== null} onOpenChange={(open) => { if (!open && !busy) setDeleting(null); }}>

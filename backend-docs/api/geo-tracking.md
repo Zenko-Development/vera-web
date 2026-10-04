@@ -21,9 +21,10 @@
     = estimated_travel_seconds / estimated_arrival_at
 ```
 
-Значения по умолчанию: интервал `15` секунд, допустимая точность `100` м,
-свежесть точки `90` секунд, средняя скорость `80` км/ч, коэффициент дорожного
-пути `1.30`. Пробки, перекрытия и фактический маршрут пока не учитываются.
+Значения по умолчанию: интервал GPS активного вызова `15` секунд, интервал
+общей позиции планшета `30` секунд, допустимая точность `100` м, свежесть
+точки `90` секунд, средняя скорость `80` км/ч, коэффициент дорожного пути
+`1.30`. Пробки, перекрытия и фактический маршрут пока не учитываются.
 Не используйте ETA как основание для медицинского или диспетчерского решения.
 
 ## GET /api/v1/device/geo-tracking-policy
@@ -41,6 +42,7 @@ Authorization: Bearer <DEVICE_ACCESS_TOKEN>
 {
   "data": {
     "active_call_interval_seconds": 15,
+    "device_location_interval_seconds": 30,
     "max_accuracy_meters": 100,
     "location_freshness_seconds": 90,
     "eta_average_speed_kmh": 80,
@@ -50,9 +52,49 @@ Authorization: Bearer <DEVICE_ACCESS_TOKEN>
 }
 ```
 
-Приложение не должно отправлять точки чаще `active_call_interval_seconds` и
-должно предупредить бригаду, когда GPS даёт точность хуже
-`max_accuracy_meters`.
+Приложение использует `device_location_interval_seconds` для общей позиции
+планшета на смене и `active_call_interval_seconds` для GPS активного вызова.
+Оба потока ограничены `max_accuracy_meters`.
+
+## POST /api/v1/device-access/location
+
+Требует device access token и активную смену. Обновляет последнюю позицию
+планшета независимо от наличия вызова и `device.last_seen_at`. История фоновых
+точек не накапливается: запись хранит только последнюю координату. Для истории
+и ETA во время вызова продолжайте отправлять отдельный
+`POST /emergency-calls/{id}/locations`.
+
+```json
+{
+  "latitude": 55.75,
+  "longitude": 37.61,
+  "accuracy_meters": 12,
+  "captured_at": "2026-09-27T12:00:00Z"
+}
+```
+
+Передавайте `Idempotency-Key: <UUID>` на каждом запросе с новым телом.
+Успешный ответ — `202 Accepted`, содержит последнюю координату и её свежесть.
+Сервер проверяет диапазон координат, время получения, активность смены, точность
+и частоту отправки. `429` означает, что интервал ещё не прошёл; `409` —
+координата старее последней принятой; `401` — смена неактивна.
+
+```json
+{
+  "data": {
+    "latitude": 55.75,
+    "longitude": 37.61,
+    "accuracy_meters": 12,
+    "captured_at": "2026-09-27T12:00:00Z",
+    "received_at": "2026-09-27T12:00:01Z",
+    "location_is_fresh": true,
+    "location_age_seconds": 1
+  }
+}
+```
+
+Если ответ `429` сохранён механизмом идемпотентности, следующий GPS sample
+должен идти с новым `Idempotency-Key`.
 
 ## POST /api/v1/emergency-calls/{id}/locations
 
@@ -129,6 +171,7 @@ Authorization: Bearer <DEVICE_ACCESS_TOKEN>
 ```json
 {
   "active_call_interval_seconds": 20,
+  "device_location_interval_seconds": 30,
   "max_accuracy_meters": 50,
   "location_freshness_seconds": 120,
   "eta_average_speed_kmh": 80,
@@ -139,6 +182,7 @@ Authorization: Bearer <DEVICE_ACCESS_TOKEN>
 Ограничения:
 
 - интервал: от `5` до `300` секунд;
+- интервал фоновой позиции устройства: от `5` до `600` секунд;
 - допустимая точность: больше `0` и не более `10000` метров;
 - свежесть: от `15` до `3600` секунд;
 - средняя скорость: от `10` до `180` км/ч;

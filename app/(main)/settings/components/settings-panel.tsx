@@ -23,6 +23,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import {
@@ -43,6 +49,10 @@ import { getRoleDisplayName } from "@/entities/role/lib/role-presenters";
 import type { Role } from "@/entities/role/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { useUserPreference } from "@/features/preferences/use-user-preference";
+import {
+  useUnsavedChanges,
+  useUnsavedNavigation,
+} from "@/features/unsaved-changes/unsaved-changes-provider";
 import { ApiError } from "@/shared/api/types";
 import { API_V1 } from "@/shared/config/api";
 import { CatalogsSettings } from "./catalogs-settings";
@@ -103,6 +113,7 @@ function setsAreEqual(left: Set<string>, right: Set<string>): boolean {
 
 export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
   const showAlert = useAlert();
+  const { requestNavigation } = useUnsavedNavigation();
   const [activeTab, setActiveTab] = useUserPreference(
     "settings:last-tab",
     initialTab ?? "general",
@@ -230,7 +241,8 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
 
   const handleCloseRole = () => {
     if (isRolePermissionsSaving) return;
-    clearSelectedRole();
+    if (hasPermissionChanges) requestNavigation(clearSelectedRole);
+    else clearSelectedRole();
   };
 
   const handleDraftPermissionChange = (
@@ -245,8 +257,8 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
     });
   };
 
-  const handleSaveRolePermissions = async () => {
-    if (!selectedRole || !hasPermissionChanges) return;
+  const handleSaveRolePermissions = async (): Promise<boolean> => {
+    if (!selectedRole || !hasPermissionChanges) return true;
 
     const toAssign = [...draftPermissionIds].filter(
       (id) => !initialPermissionIds.has(id),
@@ -288,7 +300,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
           description: `Не выполнено операций: ${failedCount}. Список синхронизирован с сервером.`,
           type: "error",
         });
-        return;
+        return true;
       }
 
       showAlert({
@@ -297,16 +309,24 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
         type: "success",
       });
       clearSelectedRole();
+      return true;
     } catch (error) {
       showAlert({
         title: "Не удалось сохранить права",
         description: getErrorMessage(error),
         type: "error",
       });
+      return false;
     } finally {
       setIsRolePermissionsSaving(false);
     }
   };
+
+  useUnsavedChanges({
+    active: selectedRole !== null && hasPermissionChanges,
+    onSave: handleSaveRolePermissions,
+    onDiscard: clearSelectedRole,
+  });
 
   const handleCreateRole = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -382,7 +402,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
           type="button"
           role="tab"
           aria-selected={activeTab === "general"}
-          onClick={() => setActiveTab("general")}
+          onClick={() => requestNavigation(() => setActiveTab("general"))}
           className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
           <Settings2 className="size-4" />
@@ -392,7 +412,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
           type="button"
           role="tab"
           aria-selected={activeTab === "gps"}
-          onClick={() => setActiveTab("gps")}
+          onClick={() => requestNavigation(() => setActiveTab("gps"))}
           className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
           <Satellite className="size-4" />
@@ -402,7 +422,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
           type="button"
           role="tab"
           aria-selected={activeTab === "catalogs"}
-          onClick={() => setActiveTab("catalogs")}
+          onClick={() => requestNavigation(() => setActiveTab("catalogs"))}
           className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
           <Library className="size-4" />
@@ -412,7 +432,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
           type="button"
           role="tab"
           aria-selected={activeTab === "access"}
-          onClick={() => setActiveTab("access")}
+          onClick={() => requestNavigation(() => setActiveTab("access"))}
           className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
         >
           <ShieldCheck className="size-4" />
@@ -640,21 +660,22 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
             >
               Отмена
             </Button>
-            <Button
-              type="button"
-              onClick={handleSaveRolePermissions}
-              disabled={
-                isRolePermissionsLoading ||
-                isRolePermissionsSaving ||
-                roleDialogError !== null ||
-                !hasPermissionChanges
-              }
-            >
-              {isRolePermissionsSaving && (
-                <LoaderCircle className="animate-spin" />
-              )}
-              Сохранить
-            </Button>
+            {hasPermissionChanges && (
+              <Button
+                type="button"
+                onClick={() => void handleSaveRolePermissions()}
+                disabled={
+                  isRolePermissionsLoading ||
+                  isRolePermissionsSaving ||
+                  roleDialogError !== null
+                }
+              >
+                {isRolePermissionsSaving && (
+                  <LoaderCircle className="animate-spin" />
+                )}
+                Сохранить
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -781,12 +802,29 @@ function GeneralSettings() {
 function GpsSettings() {
   const showAlert = useAlert();
   const [policy, setPolicy] = useState<GeoTrackingPolicy | null>(null);
+  const [savedPolicy, setSavedPolicy] = useState<GeoTrackingPolicy | null>(null);
   const [policyError, setPolicyError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    geoTrackingPolicyApi.get().then(setPolicy).catch((error) => setPolicyError(getErrorMessage(error)));
+    geoTrackingPolicyApi.get().then((loadedPolicy) => {
+      setPolicy(loadedPolicy);
+      setSavedPolicy(loadedPolicy);
+    }).catch((error) => setPolicyError(getErrorMessage(error)));
   }, []);
+
+  const hasChanges = Boolean(
+    policy &&
+    savedPolicy &&
+    (
+      policy.active_call_interval_seconds !== savedPolicy.active_call_interval_seconds ||
+      policy.device_location_interval_seconds !== savedPolicy.device_location_interval_seconds ||
+      policy.max_accuracy_meters !== savedPolicy.max_accuracy_meters ||
+      policy.location_freshness_seconds !== savedPolicy.location_freshness_seconds ||
+      policy.eta_average_speed_kmh !== savedPolicy.eta_average_speed_kmh ||
+      policy.eta_road_distance_factor !== savedPolicy.eta_road_distance_factor
+    ),
+  );
 
   const setNumber = (field: keyof Omit<GeoTrackingPolicy, "updated_at">, value: string) => {
     const number = Number(value);
@@ -794,36 +832,46 @@ function GpsSettings() {
     setPolicy((current) => current ? { ...current, [field]: number } : current);
   };
 
-  const save = async () => {
-    if (!policy) return;
+  const save = async (): Promise<boolean> => {
+    if (!policy) return false;
     setSaving(true);
     try {
       const updated = await geoTrackingPolicyApi.update({
         active_call_interval_seconds: policy.active_call_interval_seconds,
+        device_location_interval_seconds: policy.device_location_interval_seconds,
         max_accuracy_meters: policy.max_accuracy_meters,
         location_freshness_seconds: policy.location_freshness_seconds,
         eta_average_speed_kmh: policy.eta_average_speed_kmh,
         eta_road_distance_factor: policy.eta_road_distance_factor,
       });
       setPolicy(updated);
+      setSavedPolicy(updated);
       setPolicyError(null);
       showAlert({ title: "Политика геопозиции сохранена", type: "success" });
+      return true;
     } catch (error) {
       showAlert({ title: "Не удалось сохранить политику геопозиции", description: getErrorMessage(error), type: "error" });
+      return false;
     } finally { setSaving(false); }
   };
+
+  useUnsavedChanges({
+    active: hasChanges,
+    onSave: save,
+    onDiscard: () => setPolicy(savedPolicy),
+  });
 
   return (
     <SettingsSection ariaLabel="Геопозиция и время прибытия">
       <SettingsSectionHeader
         title="Геопозиция и расчёт времени прибытия"
         description="Политика определяет частоту отправки координат, допустимую точность и параметры приблизительного прогноза прибытия."
-        action={
+        action={hasChanges ? (
           <Button size="sm" onClick={() => void save()} disabled={!policy || saving}>
             {saving && <LoaderCircle className="animate-spin" />}
             Сохранить
           </Button>
-        }
+        ) : undefined}
       />
 
       {policyError ? (
@@ -833,6 +881,7 @@ function GpsSettings() {
       ) : (
         <div className="mt-6 divide-y rounded-xl border">
           <PolicyField label="Интервал отправки координат" description="Как часто планшет отправляет координаты во время активного вызова" suffix="сек." value={policy.active_call_interval_seconds} min={5} max={300} onChange={(value) => setNumber("active_call_interval_seconds", value)} />
+          <PolicyField label="Интервал позиции планшета" description="Как часто планшет передаёт общую позицию во время активной смены" suffix="сек." value={policy.device_location_interval_seconds} min={5} max={600} onChange={(value) => setNumber("device_location_interval_seconds", value)} />
           <PolicyField label="Допустимая точность" description="Точки с худшей точностью сервер отклонит" suffix="м" value={policy.max_accuracy_meters} min={0.1} max={10000} onChange={(value) => setNumber("max_accuracy_meters", value)} />
           <PolicyField label="Срок свежести координаты" description="После этого времени прогноз прибытия помечается как устаревший" suffix="сек." value={policy.location_freshness_seconds} min={15} max={3600} onChange={(value) => setNumber("location_freshness_seconds", value)} />
           <PolicyField label="Средняя скорость скорой" description="Используется только для приблизительного расчёта времени прибытия" suffix="км/ч" value={policy.eta_average_speed_kmh} min={10} max={180} onChange={(value) => setNumber("eta_average_speed_kmh", value)} />
@@ -849,7 +898,7 @@ function GpsSettings() {
 
 function PolicyField({ label, description, suffix, value, min, max, step = 1, onChange }: { label: string; description: string; suffix?: string; value: number; min: number; max: number; step?: number; onChange: (value: string) => void }) {
   const id = `gps-${label.toLocaleLowerCase("ru-RU").replaceAll(" ", "-")}`;
-  return <div className="flex flex-col gap-3 px-4 py-5 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><Label htmlFor={id}>{label}</Label><p className="mt-1 text-sm text-muted-foreground">{description}</p></div><div className="flex w-full items-center gap-2 sm:w-48"><Input id={id} type="number" value={value} min={min} max={max} step={step} onChange={(event) => onChange(event.target.value)} />{suffix && <span className="shrink-0 text-sm text-muted-foreground">{suffix}</span>}</div></div>;
+  return <div className="flex flex-col gap-3 px-4 py-5 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><Label htmlFor={id}>{label}</Label><p className="mt-1 text-sm text-muted-foreground">{description}</p></div><InputGroup className="w-full shadow-none sm:w-48"><InputGroupInput id={id} type="number" value={value} min={min} max={max} step={step} onChange={(event) => onChange(event.target.value)} />{suffix && <InputGroupAddon align="inline-end"><InputGroupText>{suffix}</InputGroupText></InputGroupAddon>}</InputGroup></div>;
 }
 
 function SettingRow({

@@ -8,7 +8,6 @@ import {
   Ambulance,
   ArrowRight,
   ArrowUpRight,
-  Clock3,
   Hospital,
   LoaderCircle,
   RotateCcwClock,
@@ -30,6 +29,8 @@ import { analyticsEmergencyCallApi } from "@/entities/analytics-emergency-call/a
 import type { AnalyticsEmergencyCall } from "@/entities/analytics-emergency-call/model/types";
 import { deviceApi } from "@/entities/device/api/device.api";
 import type { Device } from "@/entities/device/model/types";
+import { fleetLiveApi } from "@/entities/fleet-live/api/fleet-live.api";
+import type { FleetLiveVehicle } from "@/entities/fleet-live/model/types";
 import { hospitalArrivalApi } from "@/entities/hospital-arrival/api/hospital-arrival.api";
 import type { HospitalArrival } from "@/entities/hospital-arrival/model/types";
 import { hospitalApi } from "@/entities/hospital/api/hospital.api";
@@ -56,6 +57,7 @@ type DashboardData = {
   devices: Device[] | null;
   hospitals: HospitalEntity[] | null;
   arrivals: HospitalArrival[] | null;
+  fleet: FleetLiveVehicle[] | null;
   calls: AnalyticsEmergencyCall[] | null;
 };
 
@@ -65,6 +67,7 @@ const emptyData: DashboardData = {
   devices: null,
   hospitals: null,
   arrivals: null,
+  fleet: null,
   calls: null,
 };
 
@@ -79,13 +82,14 @@ export function Dashboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [users, vehicles, devices, hospitals, arrivals, calls] =
+    const [users, vehicles, devices, hospitals, arrivals, fleet, calls] =
       await Promise.allSettled([
         userApi.list(),
         ambulanceVehicleApi.list(),
         deviceApi.list(),
         hospitalApi.list(),
         hospitalArrivalApi.list(),
+        fleetLiveApi.list(),
         analyticsEmergencyCallApi.list({ limit: 5, offset: 0 }),
       ]);
 
@@ -95,6 +99,7 @@ export function Dashboard() {
       devices: fulfilledValue(devices),
       hospitals: fulfilledValue(hospitals),
       arrivals: fulfilledValue(arrivals),
+      fleet: fulfilledValue(fleet),
       calls: fulfilledValue(calls),
     });
     setUpdatedAt(new Date());
@@ -108,13 +113,15 @@ export function Dashboard() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      hospitalArrivalApi
-        .list()
-        .then((arrivals) => {
-          setData((current) => ({ ...current, arrivals }));
-          setUpdatedAt(new Date());
-        })
-        .catch(() => undefined);
+      Promise.allSettled([hospitalArrivalApi.list(), fleetLiveApi.list()])
+        .then(([arrivals, fleet]) => {
+          setData((current) => ({
+            ...current,
+            arrivals: fulfilledValue(arrivals) ?? current.arrivals,
+            fleet: fulfilledValue(fleet) ?? current.fleet,
+          }));
+          if (arrivals.status === "fulfilled" || fleet.status === "fulfilled") setUpdatedAt(new Date());
+        });
     }, 15_000);
     return () => window.clearInterval(interval);
   }, []);
@@ -153,6 +160,7 @@ export function Dashboard() {
           <DashboardMap
             hospitals={mappedHospitals}
             arrivals={data.arrivals ?? []}
+            fleet={data.fleet ?? undefined}
           />
         </section>
 
@@ -182,7 +190,7 @@ export function Dashboard() {
           icon={Ambulance}
           title="Активные машины"
           value={data.vehicles ? `${activeVehicles} / ${data.vehicles.length}` : null}
-          description="доступны для начала смены"
+          description={data.fleet ? `На смене: ${data.fleet.length}` : "доступны для начала смены"}
           loading={loading && !updatedAt}
         />
         <MetricCard

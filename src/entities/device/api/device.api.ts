@@ -1,6 +1,6 @@
 import { api } from "@/shared/api/client";
 import { pathSegment, unwrapData } from "@/shared/api/response";
-import type { ApiResponse } from "@/shared/api/types";
+import type { ApiResponse, EmptyResponse } from "@/shared/api/types";
 import type { Device, DeviceCredentials } from "../model/types";
 
 export const deviceApi = {
@@ -24,5 +24,18 @@ export const deviceApi = {
         `/device/${pathSegment(deviceId)}/auth-secret`,
       ),
     );
+  },
+
+  disable(deviceId: string): Promise<Device> {
+    return unwrapData(
+      api().patch<ApiResponse<Device>>(
+        `/device/${pathSegment(deviceId)}/status`,
+        { status: "inactive" },
+      ),
+    );
+  },
+
+  delete(deviceId: string): Promise<EmptyResponse> {
+    return api().del<EmptyResponse>(`/device/${pathSegment(deviceId)}`);
   },
 };

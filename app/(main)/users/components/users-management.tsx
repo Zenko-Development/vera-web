@@ -36,6 +36,9 @@ export function UsersManagement() {
     createUser,
     updateAccessStatus,
     updateRole,
+    updateUser,
+    resetPassword,
+    deleteUser,
   } = useUsers();
   const [query, setQuery] = useState("");
   const [roleId, setRoleId] = useState("all");
@@ -50,6 +53,7 @@ export function UsersManagement() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isUserDetailsOpen, setIsUserDetailsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<User["id"] | null>(null);
+  const [selectedUserSnapshot, setSelectedUserSnapshot] = useState<User | null>(null);
 
   const roleNames = useMemo(
     () => Object.fromEntries(roles.map((role) => [role.id, getRoleDisplayName(role.name)])),
@@ -86,7 +90,7 @@ export function UsersManagement() {
   }, [accessFilter, query, roleId, sort, users]);
 
   const selectedUser = selectedUserId
-    ? users.find((user) => user.id === selectedUserId) ?? null
+    ? users.find((user) => user.id === selectedUserId) ?? selectedUserSnapshot
     : null;
 
   const hasFilters =
@@ -100,6 +104,7 @@ export function UsersManagement() {
 
   const openUserDetails = (user: User) => {
     setSelectedUserId(user.id);
+    setSelectedUserSnapshot(user);
     setIsUserDetailsOpen(true);
   };
 
@@ -182,9 +187,15 @@ export function UsersManagement() {
         roles={roles}
         onAccessStatusChange={updateAccessStatus}
         onRoleChange={updateRole}
+        onProfileChange={updateUser}
+        onPasswordReset={resetPassword}
+        onDelete={deleteUser}
         onOpenChange={setIsUserDetailsOpen}
         onOpenChangeComplete={(open) => {
-          if (!open) setSelectedUserId(null);
+          if (!open) {
+            setSelectedUserId(null);
+            setSelectedUserSnapshot(null);
+          }
         }}
       />
     </div>
