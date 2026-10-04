@@ -5,6 +5,7 @@ import { useAuth } from '../auth/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { getDefaultAppPath, hasAllPermissions, hasAnyPermission } from '@/features/auth/access-control';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -12,6 +13,8 @@ interface AuthGuardProps {
   redirectTo?: string;
   fallback?: React.ReactNode;
   className?: string; // добавили
+  permissions?: readonly string[];
+  permissionMode?: 'any' | 'all';
 }
 
 export function AuthGuard({ 
@@ -19,10 +22,17 @@ export function AuthGuard({
   requireAuth = true, 
   redirectTo = '/',
   fallback,
-  className // добавили
+  className, // добавили
+  permissions,
+  permissionMode = 'any',
 }: AuthGuardProps) {
-  const { isAuth, isLoading } = useAuth();
+  const { isAuth, isLoading, user } = useAuth();
   const router = useRouter();
+  const hasRequiredAccess = !permissions?.length || (
+    permissionMode === 'all'
+      ? hasAllPermissions(user?.permissions, permissions)
+      : hasAnyPermission(user?.permissions, permissions)
+  );
 
   useEffect(() => {
     if (!isLoading) {
@@ -32,8 +42,11 @@ export function AuthGuard({
       if (!requireAuth && isAuth) {
         router.replace(redirectTo);
       }
+      if (requireAuth && isAuth && !hasRequiredAccess) {
+        router.replace(getDefaultAppPath(user?.permissions));
+      }
     }
-  }, [isAuth, isLoading, requireAuth, redirectTo, router]);
+  }, [hasRequiredAccess, isAuth, isLoading, requireAuth, redirectTo, router, user?.permissions]);
 
   if (isLoading) {
     return fallback ? <>{fallback}</> : (
@@ -43,7 +56,7 @@ export function AuthGuard({
     );
   }
 
-  const shouldShow = requireAuth ? isAuth : !isAuth;
+  const shouldShow = (requireAuth ? isAuth : !isAuth) && hasRequiredAccess;
   
   if (!shouldShow) {
     return null;

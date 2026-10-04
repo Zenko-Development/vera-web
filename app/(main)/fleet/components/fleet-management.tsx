@@ -15,6 +15,7 @@ import type { AmbulanceVehicle, AmbulanceVehicleStatus } from "@/entities/ambula
 import { deviceApi } from "@/entities/device/api/device.api";
 import type { Device, DeviceCredentials } from "@/entities/device/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { usePermissions } from "@/features/auth/use-permissions";
 import { useUnsavedChanges, useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 import { ApiError } from "@/shared/api/types";
 
@@ -33,6 +34,7 @@ function errorMessage(error: unknown) {
 
 export function FleetManagement() {
   const showAlert = useAlert();
+  const { can, canAny } = usePermissions();
   const { requestNavigation } = useUnsavedNavigation();
   const [vehicles, setVehicles] = useState<AmbulanceVehicle[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -48,23 +50,38 @@ export function FleetManagement() {
   const [deleteTarget, setDeleteTarget] = useState<Device | null>(null);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<FleetView>("vehicles");
+  const canManageVehicles = can("ambulance_vehicle.manage");
+  const canReadDevices = can("device.read");
+  const canProvisionDevices = can("device.provision");
+  const canResetDeviceSecret = can("device.reset_secret");
+  const canChangeDeviceStatus = can("device.change_status");
+  const canDeleteDevice = can("device.delete");
+  const canUseDeviceSection = canAny([
+    "device.read",
+    "device.provision",
+  ]);
+  const visibleView: FleetView = view === "vehicles" && !canManageVehicles
+    ? "devices"
+    : view === "devices" && !canUseDeviceSection
+      ? "vehicles"
+      : view;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [nextVehicles, nextDevices] = await Promise.all([
-        ambulanceVehicleApi.list(),
-        deviceApi.list(),
+        canManageVehicles ? ambulanceVehicleApi.list() : Promise.resolve(null),
+        canReadDevices ? deviceApi.list() : Promise.resolve(null),
       ]);
-      setVehicles(nextVehicles);
-      setDevices(nextDevices);
+      if (nextVehicles) setVehicles(nextVehicles);
+      if (nextDevices) setDevices(nextDevices);
       setError(null);
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canManageVehicles, canReadDevices]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
@@ -180,24 +197,24 @@ export function FleetManagement() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 py-3 pb-6">
       <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl border bg-card px-4 py-3 text-card-foreground">
-        <SummaryStat value={loading ? null : `${vehicles.filter((item) => item.status === "active").length} / ${vehicles.length}`} label="Активные машины" />
-        <SummaryStat value={loading ? null : String(vehicles.filter((item) => item.status === "maintenance").length)} label="На обслуживании" tone="warning" />
-        <SummaryStat value={loading ? null : `${devices.filter((item) => item.status === "active").length} / ${devices.length}`} label="Активные планшеты" />
+        {canManageVehicles && <SummaryStat value={loading ? null : `${vehicles.filter((item) => item.status === "active").length} / ${vehicles.length}`} label="Активные машины" />}
+        {canManageVehicles && <SummaryStat value={loading ? null : String(vehicles.filter((item) => item.status === "maintenance").length)} label="На обслуживании" tone="warning" />}
+        {canReadDevices && <SummaryStat value={loading ? null : `${devices.filter((item) => item.status === "active").length} / ${devices.length}`} label="Активные планшеты" />}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 text-card-foreground">
-        <Button type="button" size="sm" variant={view === "vehicles" ? "default" : "ghost"} onClick={() => setView("vehicles")}><Ambulance />Машины</Button>
-        <Button type="button" size="sm" variant={view === "devices" ? "default" : "ghost"} onClick={() => setView("devices")}><Tablet />Планшеты</Button>
+        {canManageVehicles && <Button type="button" size="sm" variant={visibleView === "vehicles" ? "default" : "ghost"} onClick={() => setView("vehicles")}><Ambulance />Машины</Button>}
+        {canUseDeviceSection && <Button type="button" size="sm" variant={visibleView === "devices" ? "default" : "ghost"} onClick={() => setView("devices")}><Tablet />Планшеты</Button>}
         <Button className="ml-auto" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
           <RefreshCw className={loading ? "animate-spin" : ""} /> Обновить
         </Button>
       </div>
       {error && <Alert variant="destructive" className="mb-3"><AlertTitle>Не удалось загрузить парк</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {view === "vehicles" ? <section className="overflow-hidden rounded-xl border bg-card text-card-foreground">
+        {visibleView === "vehicles" ? <section className="overflow-hidden rounded-xl border bg-card text-card-foreground">
           <header className="flex items-center justify-between gap-3 border-b p-4">
             <div><h2 className="font-semibold">Машины скорой</h2><p className="text-sm text-muted-foreground">Добавьте машину и оставьте статус «Активна», чтобы планшет мог открыть на ней смену.</p></div>
-            <Button size="sm" onClick={() => openVehicle("new")}><Plus /> Добавить машину</Button>
+            {canManageVehicles && <Button size="sm" onClick={() => openVehicle("new")}><Plus /> Добавить машину</Button>}
           </header>
           <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Номер</TableHead><TableHead>Статус</TableHead><TableHead className="w-24" /></TableRow></TableHeader>
             <TableBody>{vehicles.map((vehicle) => <TableRow key={vehicle.id}><TableCell className="font-medium"><span className="inline-flex items-center gap-2"><Ambulance className="size-4 text-muted-foreground" />{vehicle.car_number}</span></TableCell><TableCell><VehicleStatus status={vehicle.status} /></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => openVehicle(vehicle)}>Изменить</Button></TableCell></TableRow>)}</TableBody>
@@ -208,13 +225,14 @@ export function FleetManagement() {
         : <section className="overflow-hidden rounded-xl border bg-card text-card-foreground">
           <header className="flex items-center justify-between gap-3 border-b p-4">
             <div><h2 className="font-semibold">Планшеты</h2><p className="text-sm text-muted-foreground">Зарегистрируйте устройство и сразу сохраните одноразовый секрет на планшете.</p></div>
-            <Button size="sm" onClick={() => void provision()} disabled={busy}><Plus /> Зарегистрировать планшет</Button>
+            {canProvisionDevices && <Button size="sm" onClick={() => void provision()} disabled={busy}><Plus /> Зарегистрировать планшет</Button>}
           </header>
           <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Идентификатор устройства</TableHead><TableHead>Статус</TableHead><TableHead>Последняя связь</TableHead><TableHead className="w-72" /></TableRow></TableHeader>
-            <TableBody>{devices.map((device) => <TableRow key={device.id}><TableCell className="max-w-64 truncate font-mono text-xs"><span className="inline-flex items-center gap-2"><Tablet className="size-4 text-muted-foreground" />{device.device_id}</span></TableCell><TableCell>{device.status === "active" ? "Активен" : "Отключён"}</TableCell><TableCell className="text-muted-foreground">{device.last_seen_at ? formatDate(device.last_seen_at) : "Нет данных"}</TableCell><TableCell><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => setResetTarget(device)} disabled={busy || device.status !== "active"}><KeyRound /> Заменить секрет</Button>{device.status === "active" && <Button variant="ghost" size="icon-sm" aria-label="Отключить планшет" onClick={() => setDisableTarget(device)} disabled={busy}><PowerOff /></Button>}<Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" aria-label="Удалить планшет" onClick={() => setDeleteTarget(device)} disabled={busy}><Trash2 /></Button></div></TableCell></TableRow>)}</TableBody>
+            <TableBody>{devices.map((device) => <TableRow key={device.id}><TableCell className="max-w-64 truncate font-mono text-xs"><span className="inline-flex items-center gap-2"><Tablet className="size-4 text-muted-foreground" />{device.device_id}</span></TableCell><TableCell>{device.status === "active" ? "Активен" : "Отключён"}</TableCell><TableCell className="text-muted-foreground">{device.last_seen_at ? formatDate(device.last_seen_at) : "Нет данных"}</TableCell><TableCell><div className="flex justify-end gap-1">{canResetDeviceSecret && <Button variant="ghost" size="sm" onClick={() => setResetTarget(device)} disabled={busy || device.status !== "active"}><KeyRound /> Заменить секрет</Button>}{canChangeDeviceStatus && device.status === "active" && <Button variant="ghost" size="icon-sm" aria-label="Отключить планшет" onClick={() => setDisableTarget(device)} disabled={busy}><PowerOff /></Button>}{canDeleteDevice && <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" aria-label="Удалить планшет" onClick={() => setDeleteTarget(device)} disabled={busy}><Trash2 /></Button>}</div></TableCell></TableRow>)}</TableBody>
           </Table>
           </div>
-          {!loading && devices.length === 0 && <EmptyFleet icon={Tablet} title="Планшетов пока нет" description="Зарегистрируйте планшет и передайте выданные данные на устройство." action="Зарегистрировать планшет" onAction={() => void provision()} />}
+          {!loading && canReadDevices && devices.length === 0 && <EmptyFleet icon={Tablet} title="Планшетов пока нет" description="Зарегистрируйте планшет и передайте выданные данные на устройство." action={canProvisionDevices ? "Зарегистрировать планшет" : undefined} onAction={canProvisionDevices ? () => void provision() : undefined} />}
+          {!canReadDevices && <div className="p-8 text-center text-sm text-muted-foreground">Просмотр списка планшетов недоступен для вашей роли.</div>}
         </section>
         }
       </div>
@@ -247,8 +265,8 @@ function VehicleStatus({ status }: { status: AmbulanceVehicleStatus }) {
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${className}`}>{statusNames[status]}</span>;
 }
 
-function EmptyFleet({ icon: Icon, title, description, action, onAction }: { icon: typeof Ambulance; title: string; description: string; action: string; onAction: () => void }) {
-  return <div className="m-4 flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center"><Icon className="mb-3 size-7 text-muted-foreground" /><p className="font-medium">{title}</p><p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p><Button className="mt-4" size="sm" onClick={onAction}><Plus />{action}</Button></div>;
+function EmptyFleet({ icon: Icon, title, description, action, onAction }: { icon: typeof Ambulance; title: string; description: string; action?: string; onAction?: () => void }) {
+  return <div className="m-4 flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center"><Icon className="mb-3 size-7 text-muted-foreground" /><p className="font-medium">{title}</p><p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>{action && onAction && <Button className="mt-4" size="sm" onClick={onAction}><Plus />{action}</Button>}</div>;
 }
 
 function formatDate(value: string): string {

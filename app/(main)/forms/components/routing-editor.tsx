@@ -22,12 +22,12 @@ const routingNames: Record<ChecklistResultRoutingType, string> = {
   by_service_area: "По зоне обслуживания",
 };
 
-type Props = { version: ChecklistVersion; data: FormVersionData; onChanged: () => Promise<void> };
+type Props = { version: ChecklistVersion; data: FormVersionData; onChanged: () => Promise<void>; canManage: boolean };
 
-export function RoutingEditor({ version, data, onChanged }: Props) {
+export function RoutingEditor({ version, data, onChanged, canManage }: Props) {
   const showAlert = useAlert();
   const { requestNavigation } = useUnsavedNavigation();
-  const editable = version.status === "draft";
+  const editable = canManage && version.status === "draft";
   const [editingResult, setEditingResult] = useState<ChecklistResult | null>(null);
   const [routingType, setRoutingType] = useState<ChecklistResultRoutingType>("fixed");
   const [hospitalId, setHospitalId] = useState("");

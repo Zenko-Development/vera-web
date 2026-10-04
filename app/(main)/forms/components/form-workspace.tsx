@@ -40,6 +40,8 @@ type Props = {
   onUpdateMetadata: (data: { name: string; description: string }) => Promise<void>;
   onOpenChange: (open: boolean) => void;
   onCloseComplete: () => void;
+  canManage: boolean;
+  canPublish: boolean;
 };
 
 export function FormWorkspace({
@@ -49,6 +51,8 @@ export function FormWorkspace({
   onUpdateMetadata,
   onOpenChange,
   onCloseComplete,
+  canManage,
+  canPublish,
 }: Props) {
   const showAlert = useAlert();
   const { requestNavigation } = useUnsavedNavigation();
@@ -73,14 +77,14 @@ export function FormWorkspace({
     setVersionsLoading(true);
     try {
       let items = await checklistVersionApi.list(form.id);
-      if (items.length === 0) {
+      if (items.length === 0 && canManage) {
         const created = await checklistVersionApi.create(form.id);
         items = [created];
       }
       setVersions(items);
       setVersionId((current) => {
         if (current && items.some((item) => item.id === current)) return current;
-        return items.find((item) => item.status === "draft")?.id ?? items[0].id;
+        return items.find((item) => item.status === "draft")?.id ?? items[0]?.id ?? null;
       });
       setVersionsError(null);
     } catch (cause) {
@@ -88,14 +92,14 @@ export function FormWorkspace({
     } finally {
       setVersionsLoading(false);
     }
-  }, [form.id]);
+  }, [canManage, form.id]);
 
   useEffect(() => {
     let active = true;
     checklistVersionApi
       .list(form.id)
       .then(async (items) =>
-        items.length > 0
+        items.length > 0 || !canManage
           ? items
           : [await checklistVersionApi.create(form.id)],
       )
@@ -103,7 +107,7 @@ export function FormWorkspace({
         if (!active) return;
         setVersions(items);
         setVersionId(
-          items.find((item) => item.status === "draft")?.id ?? items[0].id,
+          items.find((item) => item.status === "draft")?.id ?? items[0]?.id ?? null,
         );
         setVersionsError(null);
       })
@@ -116,7 +120,7 @@ export function FormWorkspace({
     return () => {
       active = false;
     };
-  }, [form.id]);
+  }, [canManage, form.id]);
 
   const createRevision = async () => {
     const activeSetup = versions.find((version) => version.status === "draft");
@@ -210,7 +214,7 @@ export function FormWorkspace({
                 </DialogDescription>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {selectedVersion?.status === "draft" && (
+                {canPublish && selectedVersion?.status === "draft" && (
                   <div className="mr-1 hidden text-right md:block">
                     <p className="text-xs font-medium">
                       Готовность: {passedChecks} из {publicationChecks.length}
@@ -220,7 +224,7 @@ export function FormWorkspace({
                     </p>
                   </div>
                 )}
-                {selectedVersion?.status === "draft" && (
+                {canPublish && selectedVersion?.status === "draft" && (
                   <Button
                     type="button"
                     size="sm"
@@ -270,7 +274,7 @@ export function FormWorkspace({
               <Select
                 value={selectedVersion.status}
                 onValueChange={changeStatus}
-                disabled={busy || dataLoading}
+                disabled={busy || dataLoading || !canPublish}
               >
                 <SelectTrigger
                   size="sm"
@@ -300,7 +304,7 @@ export function FormWorkspace({
             </div>
           )}
 
-          <Button
+          {canManage && <Button
             type="button"
             size="sm"
             variant="outline"
@@ -308,7 +312,7 @@ export function FormWorkspace({
             disabled={busy || selectedVersion?.status === "draft"}
           >
             <Plus /> Новый черновик
-          </Button>
+          </Button>}
           <Button
             type="button"
             size="icon-sm"
@@ -345,9 +349,9 @@ export function FormWorkspace({
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <FilePenLine className="mb-3 size-8 text-muted-foreground" />
             <p className="font-medium">Редакция формы недоступна</p>
-            <Button className="mt-4" onClick={() => void createRevision()} disabled={busy}>
+            {canManage && <Button className="mt-4" onClick={() => void createRevision()} disabled={busy}>
               <Plus /> Начать настройку
-            </Button>
+            </Button>}
           </div>
         ) : (
           <>
@@ -385,6 +389,7 @@ export function FormWorkspace({
                   formDescription={form.description}
                   onUpdateMetadata={onUpdateMetadata}
                   onChanged={reloadData}
+                  canManage={canManage}
                 />
               )}
               {step === "logic" && (
@@ -392,6 +397,7 @@ export function FormWorkspace({
                   version={selectedVersion}
                   data={data}
                   onChanged={reloadData}
+                  canManage={canManage}
                 />
               )}
               {step === "routing" && (
@@ -399,6 +405,7 @@ export function FormWorkspace({
                   version={selectedVersion}
                   data={data}
                   onChanged={reloadData}
+                  canManage={canManage}
                 />
               )}
               {step === "resources" && (
@@ -406,6 +413,7 @@ export function FormWorkspace({
                   version={selectedVersion}
                   data={data}
                   onChanged={reloadData}
+                  canManage={canManage}
                 />
               )}
             </main>
@@ -415,7 +423,7 @@ export function FormWorkspace({
                 <Button type="button" size="sm" variant="outline" disabled={currentStepIndex === 0} onClick={() => setStep(steps[currentStepIndex - 1].id)}>Назад</Button>
                 {currentStepIndex < steps.length - 1 ? (
                   <Button type="button" size="sm" onClick={() => setStep(steps[currentStepIndex + 1].id)}>Далее: {steps[currentStepIndex + 1].label}</Button>
-                ) : selectedVersion.status === "draft" ? (
+                ) : canPublish && selectedVersion.status === "draft" ? (
                   <Button type="button" size="sm" onClick={requestPublish} disabled={busy || dataLoading}><Send />Проверить и опубликовать</Button>
                 ) : null}
               </div>

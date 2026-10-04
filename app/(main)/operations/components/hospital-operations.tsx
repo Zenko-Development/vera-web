@@ -29,6 +29,7 @@ import type { OperatingType } from "@/entities/operating-type/model/types";
 import { userApi } from "@/entities/user/api/user.api";
 import type { User } from "@/entities/user/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { usePermissions } from "@/features/auth/use-permissions";
 import { ApiError } from "@/shared/api/types";
 import { HospitalArrivalsPanel } from "./hospital-arrivals-panel";
 import { ServiceAreaDialog } from "./service-area-dialog";
@@ -57,6 +58,7 @@ function getUserLabel(user: User): string {
 
 export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: string }) {
   const showAlert = useAlert();
+  const { can, canAny } = usePermissions();
   const [section, setSection] = useState<Section>("arrivals");
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState("");
@@ -77,6 +79,22 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
   const [staffUserId, setStaffUserId] = useState("");
   const [areaTarget, setAreaTarget] = useState<HospitalServiceArea | "new" | null>(null);
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
+  const canReadResources = can("hospital_resource.read");
+  const canManageResources = can("hospital_resource.manage");
+  const canChangeResourceStatus = canAny(["hospital_resource.manage", "hospital_resource.change_status"]);
+  const canManageStaff = can("hospital_staff.manage");
+  const canReadUsers = can("user.manage");
+  const canManageAreas = can("hospital_service_area.manage");
+  const canReadArrivals = can("hospital_arrival.read");
+  const availableSections = useMemo(() => {
+    const sections: Section[] = [];
+    if (canReadArrivals) sections.push("arrivals");
+    if (canReadResources) sections.push("resources");
+    if (canManageStaff) sections.push("staff");
+    if (canManageAreas) sections.push("areas");
+    return sections;
+  }, [canManageAreas, canManageStaff, canReadArrivals, canReadResources]);
+  const activeSection = availableSections.includes(section) ? section : availableSections[0];
 
   const hospitalId = fixedHospitalId ?? selectedHospitalId;
   const selectedHospital = hospitals.find((item) => item.id === hospitalId);
@@ -89,10 +107,10 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
     try {
       const [nextHospitals, nextEquipment, nextOperating, nextAreas, nextUsers] = await Promise.all([
         hospitalApi.list(),
-        equipmentApi.list(),
-        operatingTypeApi.list(),
-        hospitalServiceAreaApi.list(),
-        userApi.list(),
+        canReadResources ? equipmentApi.list() : Promise.resolve([]),
+        canReadResources ? operatingTypeApi.list() : Promise.resolve([]),
+        canManageAreas ? hospitalServiceAreaApi.list() : Promise.resolve([]),
+        canManageStaff && canReadUsers ? userApi.list() : Promise.resolve([]),
       ]);
       setHospitals(nextHospitals);
       setEquipmentTypes(nextEquipment);
@@ -104,16 +122,16 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
     } catch (cause) {
       setError(message(cause));
     } finally { setLoading(false); }
-  }, [fixedHospitalId]);
+  }, [canManageAreas, canManageStaff, canReadResources, canReadUsers, fixedHospitalId]);
 
   const loadHospital = useCallback(async (id: string) => {
     if (!id) return;
     setLoading(true);
     try {
       const [nextEquipment, nextRooms, nextStaff] = await Promise.all([
-        hospitalEquipmentApi.list(id),
-        hospitalOperatingRoomApi.list(id),
-        hospitalStaffApi.listUserIds(id),
+        canReadResources ? hospitalEquipmentApi.list(id) : Promise.resolve([]),
+        canReadResources ? hospitalOperatingRoomApi.list(id) : Promise.resolve([]),
+        canManageStaff ? hospitalStaffApi.listUserIds(id) : Promise.resolve({ ids: [] }),
       ]);
       setEquipment(nextEquipment);
       setRooms(nextRooms);
@@ -121,7 +139,7 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
       setError(null);
     } catch (cause) { setError(message(cause)); }
     finally { setLoading(false); }
-  }, []);
+  }, [canManageStaff, canReadResources]);
 
   const loadArrivals = useCallback(async () => {
     try { setArrivals(await hospitalArrivalApi.list()); setError(null); }
@@ -137,14 +155,14 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
     return () => window.clearTimeout(timer);
   }, [hospitalId, loadHospital]);
   useEffect(() => {
-    if (section !== "arrivals") return;
+    if (activeSection !== "arrivals" || !canReadArrivals) return;
     const initialTimer = window.setTimeout(() => void loadArrivals(), 0);
     const timer = window.setInterval(() => void loadArrivals(), 15000);
     return () => {
       window.clearTimeout(initialTimer);
       window.clearInterval(timer);
     };
-  }, [loadArrivals, section]);
+  }, [activeSection, canReadArrivals, loadArrivals]);
 
   const changeStatus = async (kind: "equipment" | "operating", id: string, status: HospitalResourceStatus) => {
     setBusy(true);
@@ -248,15 +266,15 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
         </div>}
         <div className="min-w-0 flex-1 pb-1"><p className="text-sm font-medium">Управление работой центра</p><p className="truncate text-xs text-muted-foreground">{selectedHospital?.address ?? "Ресурсы, сотрудники, зоны и ожидаемые прибытия"}</p></div>
       </div>
-      <nav className="mt-2 flex flex-wrap gap-1" aria-label="Разделы работы центра">{([ ["arrivals", "Прибытия", Ambulance], ["resources", "Ресурсы", Wrench], ["staff", "Сотрудники", UsersRound], ["areas", "Зоны", Map] ] as const).map(([id, label, Icon]) => <Button key={id} size="sm" variant={section === id ? "default" : "ghost"} onClick={() => setSection(id)}><Icon />{label}</Button>)}</nav>
+      <nav className="mt-2 flex flex-wrap gap-1" aria-label="Разделы работы центра">{([ ["arrivals", "Прибытия", Ambulance], ["resources", "Ресурсы", Wrench], ["staff", "Сотрудники", UsersRound], ["areas", "Зоны", Map] ] as const).filter(([id]) => availableSections.includes(id)).map(([id, label, Icon]) => <Button key={id} size="sm" variant={activeSection === id ? "default" : "ghost"} onClick={() => setSection(id)}><Icon />{label}</Button>)}</nav>
     </div>
     <ScrollFade
       className="min-h-0 flex-1 [&_.bg-background]:bg-card [&_.bg-background]:text-card-foreground"
       viewportClassName="pb-6"
     >
-      {!selectedHospital && !loading ? <Empty text="Создайте или выберите больницу." /> : section === "arrivals" ? <HospitalArrivalsPanel hospital={selectedHospital} arrivals={visibleArrivals} />
-      : section === "resources" ? <div className="grid gap-4 xl:grid-cols-2"><ResourceTable title="Оборудование" items={equipment} names={equipmentNames} busy={busy} onAdd={() => openResource("equipment")} onStatus={(id, status) => void changeStatus("equipment", id, status)} onRemove={(id) => void removeResource("equipment", id)} /><ResourceTable title="Операционные" items={rooms} names={operatingNames} busy={busy} onAdd={() => openResource("operating")} onStatus={(id, status) => void changeStatus("operating", id, status)} onRemove={(id) => void removeResource("operating", id)} /></div>
-      : section === "staff" ? <section className="rounded-xl border bg-background"><header className="flex flex-wrap items-center gap-2 border-b p-4"><div className="mr-auto"><h2 className="font-semibold">Назначенные сотрудники</h2><p className="text-sm text-muted-foreground">Сотрудник может быть назначен в несколько больниц</p></div><StaffUserSelect users={users} assignedIds={staffIds} value={staffUserId} onValueChange={setStaffUserId} disabled={busy} /><Button size="sm" onClick={() => void assignStaff()} disabled={!staffUserId || busy}><Plus />Назначить</Button></header>{staffIds.length ? <Table><TableBody>{staffIds.map((id) => <TableRow key={id}><TableCell className="font-medium">{userNames[id] ?? id}</TableCell><TableCell className="w-16"><Button size="icon-sm" variant="ghost" aria-label={`Удалить назначение ${userNames[id] ?? id}`} onClick={() => void revokeStaff(id)} disabled={busy}><Trash2 /></Button></TableCell></TableRow>)}</TableBody></Table> : <Empty text="Сотрудники не назначены." />}</section>
+      {!selectedHospital && !loading ? <Empty text="Создайте или выберите больницу." /> : !activeSection ? <Empty text="Для работы с центром у вашей роли нет дополнительных разрешений." /> : activeSection === "arrivals" ? <HospitalArrivalsPanel hospital={selectedHospital} arrivals={visibleArrivals} />
+      : activeSection === "resources" ? <div className="grid gap-4 xl:grid-cols-2"><ResourceTable title="Оборудование" items={equipment} names={equipmentNames} busy={busy} canManage={canManageResources} canChangeStatus={canChangeResourceStatus} onAdd={() => openResource("equipment")} onStatus={(id, status) => void changeStatus("equipment", id, status)} onRemove={(id) => void removeResource("equipment", id)} /><ResourceTable title="Операционные" items={rooms} names={operatingNames} busy={busy} canManage={canManageResources} canChangeStatus={canChangeResourceStatus} onAdd={() => openResource("operating")} onStatus={(id, status) => void changeStatus("operating", id, status)} onRemove={(id) => void removeResource("operating", id)} /></div>
+      : activeSection === "staff" ? <section className="rounded-xl border bg-background"><header className="flex flex-wrap items-center gap-2 border-b p-4"><div className="mr-auto"><h2 className="font-semibold">Назначенные сотрудники</h2><p className="text-sm text-muted-foreground">Сотрудник может быть назначен в несколько больниц</p></div>{canReadUsers && <StaffUserSelect users={users} assignedIds={staffIds} value={staffUserId} onValueChange={setStaffUserId} disabled={busy} />}{canReadUsers && <Button size="sm" onClick={() => void assignStaff()} disabled={!staffUserId || busy}><Plus />Назначить</Button>}</header>{staffIds.length ? <Table><TableBody>{staffIds.map((id) => <TableRow key={id}><TableCell className="font-medium">{userNames[id] ?? id}</TableCell><TableCell className="w-16"><Button size="icon-sm" variant="ghost" aria-label={`Удалить назначение ${userNames[id] ?? id}`} onClick={() => void revokeStaff(id)} disabled={busy}><Trash2 /></Button></TableCell></TableRow>)}</TableBody></Table> : <Empty text="Сотрудники не назначены." />}</section>
       : <ServiceAreasPanel areas={hospitalAreas} hospital={selectedHospital} busy={busy} onCreate={() => openArea("new")} onEdit={openArea} onRemove={(area) => void removeArea(area)} />}
     </ScrollFade>
 
@@ -358,7 +376,7 @@ function StaffUserSelect({
   );
 }
 
-function ResourceTable({ title, items, names, busy, onAdd, onStatus, onRemove }: { title: string; items: Array<HospitalEquipment | HospitalOperatingRoom>; names: Record<string, string>; busy: boolean; onAdd: () => void; onStatus: (id: string, status: HospitalResourceStatus) => void; onRemove: (id: string) => void }) {
-  return <section className="rounded-xl border bg-background"><header className="flex items-center justify-between border-b p-4"><h2 className="font-semibold">{title}</h2><Button size="sm" onClick={onAdd}><Plus />Добавить</Button></header>{items.length ? <Table><TableHeader><TableRow><TableHead>Метка</TableHead><TableHead>Тип</TableHead><TableHead>Статус</TableHead><TableHead className="w-12" /></TableRow></TableHeader><TableBody>{items.map((item) => { const typeId = "equipment_id" in item ? item.equipment_id : item.operating_id; return <TableRow key={item.id}><TableCell className="font-medium">{item.label}</TableCell><TableCell>{names[typeId] ?? ("equipment_name" in item ? item.equipment_name : item.operating_name)}</TableCell><TableCell><Select value={item.status} onValueChange={(value) => onStatus(item.id, value as HospitalResourceStatus)} disabled={busy}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(resourceStatusNames).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></TableCell><TableCell><Button size="icon-sm" variant="ghost" onClick={() => onRemove(item.id)} disabled={busy}><Trash2 /></Button></TableCell></TableRow>; })}</TableBody></Table> : <Empty text="Ресурсы не добавлены." />}</section>;
+function ResourceTable({ title, items, names, busy, canManage, canChangeStatus, onAdd, onStatus, onRemove }: { title: string; items: Array<HospitalEquipment | HospitalOperatingRoom>; names: Record<string, string>; busy: boolean; canManage: boolean; canChangeStatus: boolean; onAdd: () => void; onStatus: (id: string, status: HospitalResourceStatus) => void; onRemove: (id: string) => void }) {
+  return <section className="rounded-xl border bg-background"><header className="flex items-center justify-between border-b p-4"><h2 className="font-semibold">{title}</h2>{canManage && <Button size="sm" onClick={onAdd}><Plus />Добавить</Button>}</header>{items.length ? <Table><TableHeader><TableRow><TableHead>Метка</TableHead><TableHead>Тип</TableHead><TableHead>Статус</TableHead>{canManage && <TableHead className="w-12" />}</TableRow></TableHeader><TableBody>{items.map((item) => { const typeId = "equipment_id" in item ? item.equipment_id : item.operating_id; return <TableRow key={item.id}><TableCell className="font-medium">{item.label}</TableCell><TableCell>{names[typeId] ?? ("equipment_name" in item ? item.equipment_name : item.operating_name)}</TableCell><TableCell>{canChangeStatus ? <Select value={item.status} onValueChange={(value) => onStatus(item.id, value as HospitalResourceStatus)} disabled={busy}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(resourceStatusNames).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select> : resourceStatusNames[item.status]}</TableCell>{canManage && <TableCell><Button size="icon-sm" variant="ghost" onClick={() => onRemove(item.id)} disabled={busy}><Trash2 /></Button></TableCell>}</TableRow>; })}</TableBody></Table> : <Empty text="Ресурсы не добавлены." />}</section>;
 }
 function Empty({ text }: { text: string }) { return <p className="m-4 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{text}</p>; }

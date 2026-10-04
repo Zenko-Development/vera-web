@@ -1,17 +1,23 @@
+"use client";
+
 import { AuthGuard } from "@/features/components/AuthGuard";
 import { Header } from "@/widgets/header/header";
 import { Ambulance, ArrowRight, Hospital, ListChecks, Settings, UsersRound } from "lucide-react";
 import Link from "next/link";
+import { checklistPermissions, fleetPermissions, hospitalPermissions, settingsPermissions } from "@/features/auth/access-control";
+import { usePermissions } from "@/features/auth/use-permissions";
 
 const steps = [
-  { href: "/settings", title: "Настройте систему", description: "Заполните справочники, создайте роли и назначьте права.", icon: Settings },
-  { href: "/users", title: "Добавьте сотрудников", description: "Создайте учётные записи и выдайте доступ к системе.", icon: UsersRound },
-  { href: "/hospitals", title: "Настройте центры", description: "Добавьте контакты, направления, ресурсы, сотрудников и зоны.", icon: Hospital },
-  { href: "/forms", title: "Опубликуйте формы", description: "Настройте вопросы и маршрутизацию, затем свяжите заболевания с центрами.", icon: ListChecks },
-  { href: "/fleet", title: "Подготовьте смену", description: "Добавьте машины и зарегистрируйте планшеты.", icon: Ambulance },
+  { href: "/settings", title: "Настройте систему", description: "Заполните справочники, создайте роли и назначьте права.", icon: Settings, permissions: settingsPermissions },
+  { href: "/users", title: "Добавьте сотрудников", description: "Создайте учётные записи и выдайте доступ к системе.", icon: UsersRound, permissions: ["user.manage"] },
+  { href: "/hospitals", title: "Настройте центры", description: "Добавьте контакты, направления, ресурсы, сотрудников и зоны.", icon: Hospital, permissions: hospitalPermissions },
+  { href: "/forms", title: "Опубликуйте формы", description: "Настройте вопросы и маршрутизацию, затем свяжите заболевания с центрами.", icon: ListChecks, permissions: checklistPermissions },
+  { href: "/fleet", title: "Подготовьте смену", description: "Добавьте машины и зарегистрируйте планшеты.", icon: Ambulance, permissions: fleetPermissions },
 ];
 
 export default function Help() {
+  const { canAny } = usePermissions();
+  const visibleSteps = steps.filter((step) => canAny(step.permissions));
   return (
     <AuthGuard requireAuth redirectTo="/login" className="h-full min-h-0">
       <Header title="Помощь" />
@@ -20,7 +26,7 @@ export default function Help() {
           <h2 className="text-lg font-semibold">Первичная настройка системы</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Это рекомендуемый порядок запуска. К данным центров и форм можно возвращаться по мере настройки связей между ними.</p>
           <ol className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            {steps.map(({ href, title, description, icon: Icon }, index) => (
+            {visibleSteps.map(({ href, title, description, icon: Icon }, index) => (
               <li key={href}>
                 <Link href={href} className="group flex h-full flex-col rounded-xl border p-4 outline-none transition hover:border-foreground/25 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-ring">
                   <div className="flex items-center justify-between"><span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" /></span><span className="text-xs font-medium text-muted-foreground">Шаг {index + 1}</span></div>

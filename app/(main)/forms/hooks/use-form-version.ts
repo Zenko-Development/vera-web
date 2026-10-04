@@ -25,6 +25,7 @@ import type { Equipment } from "@/entities/equipment/model/types";
 import { operatingTypeApi } from "@/entities/operating-type/api/operating-type.api";
 import type { OperatingType } from "@/entities/operating-type/model/types";
 import { getFormsError } from "./use-forms";
+import { usePermissions } from "@/features/auth/use-permissions";
 
 export type FormVersionData = {
   questions: ChecklistQuestion[];
@@ -58,15 +59,21 @@ const emptyData: FormVersionData = {
   unavailableQuestionCount: 0,
 };
 
-async function loadVersionData(versionId: string): Promise<FormVersionData> {
+type ReferenceAccess = {
+  hospitals: boolean;
+  facilityTypes: boolean;
+  resources: boolean;
+};
+
+async function loadVersionData(versionId: string, access: ReferenceAccess): Promise<FormVersionData> {
   const [questionsWithOptions, results, rules, hospitals, facilityTypes, equipmentTypes, operatingTypes] = await Promise.all([
     checklistQuestionApi.list(versionId),
     checklistResultApi.list(versionId),
     checklistRuleApi.list(versionId),
-    hospitalApi.list(),
-    facilityTypeApi.list(),
-    equipmentApi.list(),
-    operatingTypeApi.list(),
+    access.hospitals ? hospitalApi.list() : Promise.resolve([]),
+    access.facilityTypes ? facilityTypeApi.list() : Promise.resolve([]),
+    access.resources ? equipmentApi.list() : Promise.resolve([]),
+    access.resources ? operatingTypeApi.list() : Promise.resolve([]),
   ]);
 
   const [equipmentRequirementLists, operatingRequirementLists] = await Promise.all([
@@ -133,6 +140,10 @@ async function loadVersionData(versionId: string): Promise<FormVersionData> {
 }
 
 export function useFormVersion(versionId: string | null) {
+  const { can } = usePermissions();
+  const canReadHospitals = can("hospital.read");
+  const canReadFacilityTypes = can("facility_type.manage");
+  const canReadResources = can("hospital_resource.read");
   const [data, setData] = useState<FormVersionData>(emptyData);
   const [loading, setLoading] = useState(Boolean(versionId));
   const [error, setError] = useState<string | null>(null);
@@ -148,7 +159,11 @@ export function useFormVersion(versionId: string | null) {
 
     setLoading(true);
     try {
-      setData(await loadVersionData(versionId));
+      setData(await loadVersionData(versionId, {
+        hospitals: canReadHospitals,
+        facilityTypes: canReadFacilityTypes,
+        resources: canReadResources,
+      }));
       setLoadedVersionId(versionId);
       setError(null);
     } catch (cause) {
@@ -157,13 +172,17 @@ export function useFormVersion(versionId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [versionId]);
+  }, [canReadFacilityTypes, canReadHospitals, canReadResources, versionId]);
 
   useEffect(() => {
     let active = true;
     if (!versionId) return;
 
-    loadVersionData(versionId)
+    loadVersionData(versionId, {
+      hospitals: canReadHospitals,
+      facilityTypes: canReadFacilityTypes,
+      resources: canReadResources,
+    })
       .then((nextData) => {
         if (!active) return;
         setData(nextData);
@@ -183,7 +202,7 @@ export function useFormVersion(versionId: string | null) {
     return () => {
       active = false;
     };
-  }, [versionId]);
+  }, [canReadFacilityTypes, canReadHospitals, canReadResources, versionId]);
 
   return {
     data: versionId ? data : emptyData,

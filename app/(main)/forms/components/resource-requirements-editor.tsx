@@ -19,9 +19,9 @@ import { getFormsError } from "../hooks/use-forms";
 type Kind = "equipment" | "operating";
 type EditorTarget = { result: ChecklistResult; kind: Kind } | null;
 
-export function ResourceRequirementsEditor({ version, data, onChanged }: { version: ChecklistVersion; data: FormVersionData; onChanged: () => Promise<void> }) {
+export function ResourceRequirementsEditor({ version, data, onChanged, canManage }: { version: ChecklistVersion; data: FormVersionData; onChanged: () => Promise<void>; canManage: boolean }) {
   const showAlert = useAlert();
-  const editable = version.status === "draft";
+  const editable = canManage && version.status === "draft";
   const [target, setTarget] = useState<EditorTarget>(null);
   const [typeId, setTypeId] = useState("");
   const [count, setCount] = useState("1");

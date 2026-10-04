@@ -11,12 +11,17 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Checklist } from "@/entities/checklist/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { usePermissions } from "@/features/auth/use-permissions";
 import { getFormsError, useForms } from "../hooks/use-forms";
 import { ChecklistDialog } from "./checklist-dialog";
 import { FormWorkspace } from "./form-workspace";
 
 export function FormsManagement() {
   const showAlert = useAlert();
+  const { can } = usePermissions();
+  const canManage = can("checklist.manage");
+  const canPublish = can("checklist.publish");
+  const canCreate = canManage && can("sickness.manage");
   const {
     forms,
     sicknesses,
@@ -105,19 +110,19 @@ export function FormsManagement() {
       <InputGroup className="min-w-64 flex-1 shadow-none"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по названию, описанию или заболеванию" aria-label="Поиск форм" /></InputGroup>
       <Select value={sicknessFilter} onValueChange={(value) => setSicknessFilter(value ?? "all")}><SelectTrigger className="w-52 bg-background shadow-none" size="sm" aria-label="Фильтр по заболеванию"><SelectValue /></SelectTrigger><SelectContent align="start"><SelectGroup><SelectLabel>Заболевание</SelectLabel><SelectItem value="all">Все заболевания</SelectItem>{sicknesses.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectGroup></SelectContent></Select>
       <Button type="button" variant="outline" size="sm" onClick={() => void handleRefresh()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} /> Обновить</Button>
-      <Button type="button" size="sm" onClick={openCreateDialog}><Plus /> Создать форму</Button>
+      {canCreate && <Button type="button" size="sm" onClick={openCreateDialog}><Plus /> Создать форму</Button>}
     </CardContent></Card>
 
     {error && !loading && <Alert variant="destructive"><AlertTitle>Не удалось загрузить формы</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 
     <div className="min-h-0 flex-1 overflow-y-auto pb-5">
         {loading ? <div className="flex h-48 items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Загружаем формы…</div>
-          : visible.length === 0 ? <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed bg-card p-6 text-center text-card-foreground"><ClipboardList className="mb-3 size-8 text-muted-foreground" /><p className="font-medium">{forms.length ? "Формы не найдены" : "Форм пока нет"}</p><p className="mt-1 max-w-sm text-sm text-muted-foreground">{forms.length ? "Измените поиск или выберите другое заболевание." : "Создайте форму и сразу настройте её полный сценарий."}</p>{forms.length === 0 && <Button className="mt-4" size="sm" onClick={openCreateDialog}><Plus /> Создать форму</Button>}</div>
+          : visible.length === 0 ? <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed bg-card p-6 text-center text-card-foreground"><ClipboardList className="mb-3 size-8 text-muted-foreground" /><p className="font-medium">{forms.length ? "Формы не найдены" : "Форм пока нет"}</p><p className="mt-1 max-w-sm text-sm text-muted-foreground">{forms.length ? "Измените поиск или выберите другое заболевание." : canCreate ? "Создайте форму и сразу настройте её полный сценарий." : "Доступных форм пока нет."}</p>{canCreate && forms.length === 0 && <Button className="mt-4" size="sm" onClick={openCreateDialog}><Plus /> Создать форму</Button>}</div>
           : <Card className="overflow-hidden py-0"><Table><TableHeader><TableRow><TableHead>Форма</TableHead><TableHead>Заболевание</TableHead><TableHead>Обновлена</TableHead><TableHead className="w-56">Действия</TableHead></TableRow></TableHeader><TableBody>{visible.map((form) => <TableRow key={form.id}>
             <TableCell><button type="button" className="text-left" onClick={() => openWorkspace(form.id)}><span className="font-medium hover:underline">{form.name}</span><span className="mt-1 block max-w-lg truncate text-xs text-muted-foreground">{form.description || "Без описания"}</span></button></TableCell>
             <TableCell>{sicknessNames[form.sickness_id] ?? "Неизвестное заболевание"}</TableCell>
             <TableCell className="text-muted-foreground">{form.updated_at ? new Date(form.updated_at).toLocaleDateString("ru-RU") : "—"}</TableCell>
-            <TableCell><div className="flex items-center gap-1"><Button type="button" size="sm" variant="outline" onClick={() => openWorkspace(form.id)}><Settings2 /> Открыть</Button><Button type="button" size="icon-sm" variant="ghost" aria-label={`Удалить ${form.name}`} onClick={() => setDeleting(form)}><Trash2 /></Button></div></TableCell>
+            <TableCell><div className="flex items-center gap-1"><Button type="button" size="sm" variant="outline" onClick={() => openWorkspace(form.id)}><Settings2 /> Открыть</Button>{canManage && <Button type="button" size="icon-sm" variant="ghost" aria-label={`Удалить ${form.name}`} onClick={() => setDeleting(form)}><Trash2 /></Button>}</div></TableCell>
           </TableRow>)}</TableBody></Table></Card>}
     </div>
 
@@ -131,8 +136,10 @@ export function FormsManagement() {
       }}
       onOpenChange={setWorkspaceOpen}
       onCloseComplete={() => setSelectedId(null)}
+      canManage={canManage}
+      canPublish={canPublish}
     />}
-    {createDialogMounted && <ChecklistDialog
+    {canCreate && createDialogMounted && <ChecklistDialog
       key="new"
       open={createDialogOpen}
       form={null}

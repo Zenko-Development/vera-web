@@ -38,6 +38,7 @@ import type { OperatingType } from "@/entities/operating-type/model/types";
 import { sicknessApi } from "@/entities/sickness/api/sickness.api";
 import type { Sickness } from "@/entities/sickness/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { usePermissions } from "@/features/auth/use-permissions";
 import { useUnsavedChanges, useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 import { ApiError } from "@/shared/api/types";
 import { SettingsSection, SettingsSectionHeader } from "./settings-section";
@@ -53,8 +54,6 @@ const catalogMeta: Record<CatalogKind, { title: string; itemName: string; descri
   operatingTypes: { title: "Типы операционных", itemName: "тип операционной", description: "Справочник операционных и кабинетов", icon: BedDouble },
 };
 
-const catalogKinds = Object.keys(catalogMeta) as CatalogKind[];
-
 const emptyCatalogs: CatalogState = {
   sicknesses: [],
   facilityTypes: [],
@@ -69,6 +68,7 @@ function message(error: unknown): string {
 
 export function CatalogsSettings() {
   const showAlert = useAlert();
+  const { can } = usePermissions();
   const { requestNavigation } = useUnsavedNavigation();
   const [kind, setKind] = useState<CatalogKind>("sicknesses");
   const [catalogs, setCatalogs] = useState<CatalogState>(emptyCatalogs);
@@ -82,24 +82,37 @@ export function CatalogsSettings() {
   const [description, setDescription] = useState("");
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const accessibleKinds = useMemo(() => {
+    const kinds: CatalogKind[] = [];
+    if (can("sickness.manage")) kinds.push("sicknesses");
+    if (can("facility_type.manage")) kinds.push("facilityTypes");
+    if (can("hospital_resource.read")) kinds.push("equipment", "operatingTypes");
+    return kinds;
+  }, [can]);
+  const canEditKind = useCallback((itemKind: CatalogKind) => {
+    if (itemKind === "sicknesses") return can("sickness.manage");
+    if (itemKind === "facilityTypes") return can("facility_type.manage");
+    return can("hospital_resource.manage");
+  }, [can]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [sicknesses, facilityTypes, equipment, operatingTypes] = await Promise.all([
-        sicknessApi.list(),
-        facilityTypeApi.list(),
-        equipmentApi.list(),
-        operatingTypeApi.list(),
-      ]);
-      setCatalogs({ sicknesses, facilityTypes: facilityTypes ?? [], equipment, operatingTypes });
+      const nextCatalogs: CatalogState = { ...emptyCatalogs };
+      await Promise.all(accessibleKinds.map(async (itemKind) => {
+        if (itemKind === "sicknesses") nextCatalogs.sicknesses = await sicknessApi.list();
+        else if (itemKind === "facilityTypes") nextCatalogs.facilityTypes = (await facilityTypeApi.list()) ?? [];
+        else if (itemKind === "equipment") nextCatalogs.equipment = await equipmentApi.list();
+        else nextCatalogs.operatingTypes = await operatingTypeApi.list();
+      }));
+      setCatalogs(nextCatalogs);
       setError(null);
     } catch (cause) {
       setError(message(cause));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accessibleKinds]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
@@ -109,7 +122,7 @@ export function CatalogsSettings() {
   const visibleCatalogs = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("ru-RU");
     return Object.fromEntries(
-      catalogKinds.map((itemKind) => [
+      accessibleKinds.map((itemKind) => [
         itemKind,
         catalogs[itemKind].filter((item) => {
           const value = `${item.name} ${item.description} ${"code" in item ? item.code : ""}`.toLocaleLowerCase("ru-RU");
@@ -117,7 +130,7 @@ export function CatalogsSettings() {
         }),
       ]),
     ) as CatalogState;
-  }, [catalogs, query]);
+  }, [accessibleKinds, catalogs, query]);
 
   const openEditor = (itemKind: CatalogKind, item: CatalogItem | "new") => {
     setKind(itemKind);
@@ -238,7 +251,7 @@ export function CatalogsSettings() {
         {error && <Alert variant="destructive" className="mt-4"><AlertTitle>Не удалось загрузить справочники</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 
         <div className="mt-6 space-y-4">
-          {catalogKinds.map((itemKind) => {
+          {accessibleKinds.map((itemKind) => {
             const itemMeta = catalogMeta[itemKind];
             const Icon = itemMeta.icon;
             const items = visibleCatalogs[itemKind];
@@ -253,9 +266,11 @@ export function CatalogsSettings() {
                     </div>
                     <p className="truncate text-xs text-muted-foreground">{itemMeta.description}</p>
                   </div>
-                  <Button size="sm" onClick={() => openEditor(itemKind, "new")}>
-                    <Plus />Добавить
-                  </Button>
+                  {canEditKind(itemKind) && (
+                    <Button size="sm" onClick={() => openEditor(itemKind, "new")}>
+                      <Plus />Добавить
+                    </Button>
+                  )}
                 </header>
 
                 {loading ? (
@@ -266,7 +281,7 @@ export function CatalogsSettings() {
                   <div className="flex min-h-32 flex-col items-center justify-center p-6 text-center">
                     <Icon className="mb-2 size-6 text-muted-foreground" />
                     <p className="text-sm font-medium">{query ? "Ничего не найдено" : "Справочник пуст"}</p>
-                    {!query && (
+                    {!query && canEditKind(itemKind) && (
                       <Button className="mt-3" size="sm" variant="outline" onClick={() => openEditor(itemKind, "new")}>
                         <Plus />Добавить запись
                       </Button>
@@ -279,7 +294,7 @@ export function CatalogsSettings() {
                         <TableHead>Название</TableHead>
                         {itemKind === "facilityTypes" && <TableHead>Код</TableHead>}
                         <TableHead>Описание</TableHead>
-                        <TableHead className="w-24" />
+                        {canEditKind(itemKind) && <TableHead className="w-24" />}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -290,12 +305,12 @@ export function CatalogsSettings() {
                             <TableCell className="font-mono text-xs">{"code" in item ? item.code : "—"}</TableCell>
                           )}
                           <TableCell className="max-w-md truncate text-muted-foreground">{item.description || "—"}</TableCell>
-                          <TableCell>
+                          {canEditKind(itemKind) && <TableCell>
                             <div className="flex justify-end">
                               <Button size="icon-sm" variant="ghost" aria-label={`Изменить ${item.name}`} onClick={() => openEditor(itemKind, item)}><Pencil /></Button>
                               <Button size="icon-sm" variant="ghost" aria-label={`Удалить ${item.name}`} onClick={() => { setKind(itemKind); setDeleting(item); }}><Trash2 /></Button>
                             </div>
-                          </TableCell>
+                          </TableCell>}
                         </TableRow>
                       ))}
                     </TableBody>

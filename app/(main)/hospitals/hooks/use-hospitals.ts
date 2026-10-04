@@ -13,6 +13,7 @@ import type {
 import { sicknessApi } from "@/entities/sickness/api/sickness.api";
 import type { Sickness } from "@/entities/sickness/model/types";
 import { ApiError } from "@/shared/api/types";
+import { usePermissions } from "@/features/auth/use-permissions";
 
 type HospitalsSnapshot = {
   hospitals: Hospital[];
@@ -20,11 +21,11 @@ type HospitalsSnapshot = {
   sicknesses: Sickness[];
 };
 
-async function getHospitalsSnapshot(): Promise<HospitalsSnapshot> {
+async function getHospitalsSnapshot(access: { facilityTypes: boolean; sicknesses: boolean }): Promise<HospitalsSnapshot> {
   const [hospitals, facilityTypes, sicknesses] = await Promise.all([
     hospitalApi.list(),
-    facilityTypeApi.list(),
-    sicknessApi.list(),
+    access.facilityTypes ? facilityTypeApi.list() : Promise.resolve([]),
+    access.sicknesses ? sicknessApi.list() : Promise.resolve([]),
   ]);
 
   return {
@@ -45,6 +46,9 @@ export function getHospitalsErrorMessage(error: unknown): string {
 }
 
 export function useHospitals() {
+  const { can } = usePermissions();
+  const canReadFacilityTypes = can("facility_type.manage");
+  const canReadSicknesses = can("sickness.manage");
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [facilityTypes, setFacilityTypes] = useState<FacilityType[]>([]);
   const [sicknesses, setSicknesses] = useState<Sickness[]>([]);
@@ -57,7 +61,7 @@ export function useHospitals() {
   useEffect(() => {
     let isActive = true;
 
-    getHospitalsSnapshot()
+    getHospitalsSnapshot({ facilityTypes: canReadFacilityTypes, sicknesses: canReadSicknesses })
       .then((snapshot) => {
         if (!isActive) return;
         setHospitals(snapshot.hospitals);
@@ -75,12 +79,12 @@ export function useHospitals() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [canReadFacilityTypes, canReadSicknesses]);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
     try {
-      const snapshot = await getHospitalsSnapshot();
+      const snapshot = await getHospitalsSnapshot({ facilityTypes: canReadFacilityTypes, sicknesses: canReadSicknesses });
       setHospitals(snapshot.hospitals);
       setFacilityTypes(snapshot.facilityTypes);
       setSicknesses(snapshot.sicknesses);
@@ -92,7 +96,7 @@ export function useHospitals() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [canReadFacilityTypes, canReadSicknesses]);
 
   const loadHospitalSicknesses = useCallback(async (hospitalId: string) => {
     const linkedSicknesses = await hospitalSicknessApi.listSicknesses(hospitalId);

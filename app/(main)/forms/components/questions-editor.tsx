@@ -64,6 +64,7 @@ type Props = {
   formDescription: string;
   onUpdateMetadata: (data: { name: string; description: string }) => Promise<void>;
   onChanged: () => Promise<void>;
+  canManage: boolean;
 };
 
 type Answer = string | string[];
@@ -83,10 +84,11 @@ export function QuestionsEditor({
   formDescription,
   onUpdateMetadata,
   onChanged,
+  canManage,
 }: Props) {
   const showAlert = useAlert();
   const { requestNavigation } = useUnsavedNavigation();
-  const editable = version.status === "draft";
+  const editable = canManage && version.status === "draft";
   const canReorder = editable && data.unavailableQuestionCount === 0;
   const [questionForm, setQuestionForm] =
     useState<ChecklistQuestion | "new" | null>(null);

@@ -9,6 +9,7 @@ import { ScrollFade } from "@/components/ui/scroll-fade";
 import type { Hospital } from "@/entities/hospital/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { useUserPreference } from "@/features/preferences/use-user-preference";
+import { usePermissions } from "@/features/auth/use-permissions";
 import { HospitalForm } from "./hospital-form";
 import { HospitalsGrid, HospitalsTable } from "./hospitals-list";
 import {
@@ -27,6 +28,8 @@ const isHospitalsViewMode = (value: unknown): value is HospitalsViewMode =>
 export function HospitalsManagement() {
   const router = useRouter();
   const showAlert = useAlert();
+  const { can } = usePermissions();
+  const canManage = can("hospital.manage");
   const {
     hospitals,
     facilityTypes,
@@ -116,7 +119,7 @@ export function HospitalsManagement() {
         onSortChange={setSort}
         onViewModeChange={setViewMode}
         onRefresh={() => void handleRefresh()}
-        onCreate={() => setFormTarget("new")}
+        onCreate={canManage ? () => setFormTarget("new") : undefined}
       />
 
       {error && !isLoading && (
@@ -138,6 +141,7 @@ export function HospitalsManagement() {
               hasFilters={hasFilters}
               onClearFilters={clearFilters}
               onCreate={() => setFormTarget("new")}
+              canCreate={canManage}
             />
           ) : viewMode === "grid" ? (
             <HospitalsGrid
@@ -154,7 +158,7 @@ export function HospitalsManagement() {
           )}
       </ScrollFade>
 
-      <HospitalForm
+      {canManage && <HospitalForm
         target={formTarget}
         facilityTypes={facilityTypes}
         sicknesses={sicknesses}
@@ -168,7 +172,7 @@ export function HospitalsManagement() {
           return created;
         }}
         onUpdate={updateHospital}
-      />
+      />}
     </div>
   );
 }
@@ -200,10 +204,12 @@ function HospitalsEmpty({
   hasFilters,
   onClearFilters,
   onCreate,
+  canCreate,
 }: {
   hasFilters: boolean;
   onClearFilters: () => void;
   onCreate: () => void;
+  canCreate: boolean;
 }) {
   return (
     <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed bg-card p-6 text-center text-card-foreground">
@@ -218,9 +224,9 @@ function HospitalsEmpty({
       <p className="mt-1 max-w-sm text-sm text-muted-foreground">
         {hasFilters
           ? "Попробуйте изменить поисковый запрос или тип учреждения."
-          : "Создайте первый центр и укажите направления, по которым он принимает пациентов."}
+          : canCreate ? "Создайте первый центр и укажите направления, по которым он принимает пациентов." : "Доступных сосудистых центров пока нет."}
       </p>
-      <Button
+      {(hasFilters || canCreate) && <Button
         type="button"
         size="sm"
         variant={hasFilters ? "outline" : "default"}
@@ -234,7 +240,7 @@ function HospitalsEmpty({
             <Plus /> Создать центр
           </>
         )}
-      </Button>
+      </Button>}
     </div>
   );
 }

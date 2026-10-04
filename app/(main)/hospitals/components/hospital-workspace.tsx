@@ -12,10 +12,13 @@ import { HospitalOperations } from "../../operations/components/hospital-operati
 import { HospitalForm } from "./hospital-form";
 import { getHospitalsErrorMessage, useHospitals } from "../hooks/use-hospitals";
 import { useAlert } from "@/features/alert/alert-store";
+import { usePermissions } from "@/features/auth/use-permissions";
 
 export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
   const router = useRouter();
   const showAlert = useAlert();
+  const { can } = usePermissions();
+  const canManageHospital = can("hospital.manage");
   const {
     hospitals,
     facilityTypes,
@@ -114,8 +117,8 @@ export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
               </dl>
             </TooltipContent>
           </Tooltip>
-          <Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil />Изменить</Button>
-          <Button size="icon-sm" variant="ghost" aria-label="Удалить центр" onClick={() => setDeleteOpen(true)}><Trash2 /></Button>
+          {canManageHospital && <Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil />Изменить</Button>}
+          {canManageHospital && <Button size="icon-sm" variant="ghost" aria-label="Удалить центр" onClick={() => setDeleteOpen(true)}><Trash2 /></Button>}
         </div>
       </header>
 
@@ -123,7 +126,7 @@ export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
         <HospitalOperations fixedHospitalId={hospital.id} />
       </main>
 
-      <HospitalForm
+      {canManageHospital && <HospitalForm
         target={editing ? hospital : null}
         facilityTypes={facilityTypes}
         sicknesses={sicknesses}
@@ -131,7 +134,7 @@ export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
         onLoadSicknesses={loadHospitalSicknesses}
         onCreate={createHospital}
         onUpdate={updateHospital}
-      />
+      />}
 
       <Dialog open={deleteOpen} onOpenChange={(open) => { if (!deleting) setDeleteOpen(open); }}>
         <DialogContent><DialogHeader><DialogTitle>Удалить сосудистый центр?</DialogTitle><DialogDescription>«{hospital.name}» и все связанные настройки будут удалены. Действие нельзя отменить.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>Отмена</Button><Button variant="destructive" onClick={() => void remove()} disabled={deleting}>{deleting && <LoaderCircle className="animate-spin" />}Удалить</Button></DialogFooter></DialogContent>

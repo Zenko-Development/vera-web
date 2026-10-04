@@ -34,7 +34,7 @@ type Props = {
   onSortChange: (value: HospitalsSort) => void;
   onViewModeChange: (value: HospitalsViewMode) => void;
   onRefresh: () => void;
-  onCreate: () => void;
+  onCreate?: () => void;
 };
 
 export function HospitalsToolbar({
@@ -124,9 +124,9 @@ export function HospitalsToolbar({
         <RefreshCw className={isLoading ? "animate-spin" : ""} />
       </Button>
 
-      <Button type="button" size="sm" onClick={onCreate}>
+      {onCreate && <Button type="button" size="sm" onClick={onCreate}>
         <Plus /> Новый центр
-      </Button>
+      </Button>}
     </div>
   );
 }

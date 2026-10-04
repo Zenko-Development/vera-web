@@ -31,6 +31,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/features/auth/useAuth";
+import {
+  checklistPermissions,
+  dashboardPermissions,
+  fleetPermissions,
+  getDefaultAppPath,
+  hospitalPermissions,
+  mapPermissions,
+  settingsPermissions,
+} from "@/features/auth/access-control";
 import { useUnsavedNavigation } from "@/features/unsaved-changes/unsaved-changes-provider";
 import { cn } from "@/lib/utils";
 import Logo from "@/shared/assets/icons/logo-icon.svg";
@@ -43,17 +52,17 @@ type MenuItem = {
 };
 
 const primaryItems: MenuItem[] = [
-  { href: "/", label: "Главная", icon: LayoutDashboard },
+  { href: "/", label: "Главная", icon: LayoutDashboard, permissions: [...dashboardPermissions] },
   { href: "/users", label: "Пользователи", icon: UsersRound, permissions: ["user.manage"] },
-  { href: "/hospitals", label: "Сосудистые центры", icon: Hospital, permissions: ["hospital.read", "hospital.manage", "hospital_staff.manage"] },
-  { href: "/map", label: "Карта", icon: MapPinned, permissions: ["fleet_location.read", "hospital_arrival.read"] },
-  { href: "/forms", label: "Формы", icon: ListTodo, permissions: ["checklist.read", "checklist.manage"] },
-  { href: "/fleet", label: "Машины и планшеты", icon: Ambulance, permissions: ["ambulance_vehicle.manage", "device.read", "device.provision"] },
+  { href: "/hospitals", label: "Сосудистые центры", icon: Hospital, permissions: [...hospitalPermissions] },
+  { href: "/map", label: "Карта", icon: MapPinned, permissions: [...mapPermissions] },
+  { href: "/forms", label: "Формы", icon: ListTodo, permissions: [...checklistPermissions] },
+  { href: "/fleet", label: "Машины и планшеты", icon: Ambulance, permissions: [...fleetPermissions] },
   { href: "/analytics", label: "История действий", icon: RotateCcwClock, permissions: ["analytics.read"] },
 ];
 
 const secondaryItems: MenuItem[] = [
-  { href: "/settings", label: "Настройки", icon: Settings, permissions: ["rbac.manage", "geo_tracking_policy.manage", "facility_type.manage", "sickness.manage"] },
+  { href: "/settings", label: "Настройки", icon: Settings, permissions: [...settingsPermissions] },
   { href: "/help", label: "Помощь", icon: MessageCircleQuestionMark },
 ];
 
@@ -98,6 +107,7 @@ export function BacksideMenu() {
   const { requestNavigation } = useUnsavedNavigation();
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const homeHref = getDefaultAppPath(user?.permissions);
   const canSee = (item: MenuItem) =>
     !item.permissions ||
     item.permissions.some((permission) => user?.permissions.includes(permission));
@@ -123,8 +133,8 @@ export function BacksideMenu() {
             delay={0}
             render={
               <Link
-                href="/"
-                aria-label="Главная"
+                href={homeHref}
+                aria-label={homeHref === "/" ? "Главная" : "Первый доступный раздел"}
                 className="flex size-10 items-center justify-center rounded-full text-white outline-none transition hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/70"
               />
             }
@@ -135,7 +145,7 @@ export function BacksideMenu() {
             />
           </TooltipTrigger>
           <TooltipContent side="right" sideOffset={12}>
-            <p>Главная</p>
+            <p>{homeHref === "/" ? "Главная" : "Первый доступный раздел"}</p>
           </TooltipContent>
         </Tooltip>
 

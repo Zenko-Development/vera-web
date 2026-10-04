@@ -6,6 +6,7 @@ import type { Checklist, CreateChecklistRequest, UpdateChecklistRequest } from "
 import { sicknessApi } from "@/entities/sickness/api/sickness.api";
 import type { Sickness } from "@/entities/sickness/model/types";
 import { ApiError } from "@/shared/api/types";
+import { usePermissions } from "@/features/auth/use-permissions";
 
 export function getFormsError(error: unknown): string {
   if (ApiError.isApiError(error)) return error.getMessage();
@@ -14,6 +15,8 @@ export function getFormsError(error: unknown): string {
 }
 
 export function useForms() {
+  const { can } = usePermissions();
+  const canReadSicknesses = can("sickness.manage");
   const [forms, setForms] = useState<Checklist[]>([]);
   const [sicknesses, setSicknesses] = useState<Sickness[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +24,7 @@ export function useForms() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([checklistApi.list(), sicknessApi.list()])
+    Promise.all([checklistApi.list(), canReadSicknesses ? sicknessApi.list() : Promise.resolve([])])
       .then(([nextForms, nextSicknesses]) => {
         if (!active) return;
         setForms(nextForms);
@@ -35,12 +38,12 @@ export function useForms() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, []);
+  }, [canReadSicknesses]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextForms, nextSicknesses] = await Promise.all([checklistApi.list(), sicknessApi.list()]);
+      const [nextForms, nextSicknesses] = await Promise.all([checklistApi.list(), canReadSicknesses ? sicknessApi.list() : Promise.resolve([])]);
       setForms(nextForms);
       setSicknesses(nextSicknesses);
       setError(null);
@@ -50,7 +53,7 @@ export function useForms() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canReadSicknesses]);
 
   const create = useCallback(async (data: CreateChecklistRequest) => {
     const created = await checklistApi.create(data);

@@ -18,6 +18,8 @@ import { fleetLiveApi } from "@/entities/fleet-live/api/fleet-live.api";
 import type { FleetLiveVehicle } from "@/entities/fleet-live/model/types";
 import { hospitalApi } from "@/entities/hospital/api/hospital.api";
 import type { Hospital } from "@/entities/hospital/model/types";
+import { usePermissions } from "@/features/auth/use-permissions";
+import { cn } from "@/lib/utils";
 import { getArrivalCoordinates } from "./map-data";
 
 const LiveMap = dynamic(
@@ -44,6 +46,7 @@ function hasCoordinates(hospital: Hospital): boolean {
 }
 
 export function LiveMapWorkspace() {
+  const { can } = usePermissions();
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [arrivals, setArrivals] = useState<HospitalArrival[]>([]);
   const [fleet, setFleet] = useState<FleetLiveVehicle[] | null>(null);
@@ -52,26 +55,30 @@ export function LiveMapWorkspace() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [showHospitals, setShowHospitals] = useState(true);
   const [showVehicles, setShowVehicles] = useState(true);
+  const canSeeHospitals = can("hospital.read");
+  const canSeeArrivals = can("hospital_arrival.read");
+  const canSeeFleet = can("fleet_location.read");
 
   const loadHospitals = useCallback(async () => {
+    if (!canSeeHospitals) return;
     try {
       setHospitals(await hospitalApi.list());
     } catch {
       // The map remains usable with the data that was loaded previously.
     }
-  }, []);
+  }, [canSeeHospitals]);
 
   const loadVehicles = useCallback(async () => {
     const [fleetResult, arrivalsResult] = await Promise.allSettled([
-      fleetLiveApi.list(),
-      hospitalArrivalApi.list(),
+      canSeeFleet ? fleetLiveApi.list() : Promise.resolve(null),
+      canSeeArrivals ? hospitalArrivalApi.list() : Promise.resolve(null),
     ]);
-    if (fleetResult.status === "fulfilled") setFleet(fleetResult.value);
-    if (arrivalsResult.status === "fulfilled") setArrivals(arrivalsResult.value);
-    if (fleetResult.status === "fulfilled" || arrivalsResult.status === "fulfilled") {
+    if (fleetResult.status === "fulfilled" && fleetResult.value !== null) setFleet(fleetResult.value);
+    if (arrivalsResult.status === "fulfilled" && arrivalsResult.value !== null) setArrivals(arrivalsResult.value);
+    if ((fleetResult.status === "fulfilled" && fleetResult.value !== null) || (arrivalsResult.status === "fulfilled" && arrivalsResult.value !== null)) {
       setLastUpdatedAt(new Date());
     }
-  }, []);
+  }, [canSeeArrivals, canSeeFleet]);
 
   useEffect(() => {
     let active = true;
@@ -111,7 +118,7 @@ export function LiveMapWorkspace() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 pb-5 pt-3">
       <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 text-card-foreground">
-        <Button
+        {canSeeHospitals && <Button
           type="button"
           size="sm"
           variant={showHospitals ? "default" : "ghost"}
@@ -121,8 +128,8 @@ export function LiveMapWorkspace() {
           <Building2 />
           Больницы
           <span className="opacity-60">{mappedHospitals.length}</span>
-        </Button>
-        <Button
+        </Button>}
+        {(canSeeFleet || canSeeArrivals) && <Button
           type="button"
           size="sm"
           variant={showVehicles ? "default" : "ghost"}
@@ -132,7 +139,7 @@ export function LiveMapWorkspace() {
           <Ambulance />
           Машины
           <span className="opacity-60">{fleet?.length ?? mappedVehiclesCount}</span>
-        </Button>
+        </Button>}
         <div className="ml-auto flex items-center gap-3">
           {lastUpdatedAt && (
             <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
@@ -157,7 +164,10 @@ export function LiveMapWorkspace() {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border bg-card text-card-foreground lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className={cn(
+        "grid min-h-0 flex-1 overflow-hidden rounded-xl border bg-card text-card-foreground",
+        canSeeArrivals && "lg:grid-cols-[minmax(0,1fr)_320px]",
+      )}>
         <div className="relative isolate min-h-96 overflow-hidden lg:min-h-0">
           <LiveMap
             hospitals={showHospitals ? mappedHospitals : []}
@@ -166,7 +176,7 @@ export function LiveMapWorkspace() {
           />
         </div>
 
-        <aside
+        {canSeeArrivals && <aside
           className="min-h-0 overflow-hidden border-t lg:border-l lg:border-t-0"
           aria-label="Ожидаемые прибытия"
         >
@@ -200,12 +210,12 @@ export function LiveMapWorkspace() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-medium">{arrival.car_number}</p>
-                        <Link
+                        {canSeeHospitals ? <Link
                           href={`/hospitals/${arrival.hospital_id}`}
                           className="mt-0.5 block truncate text-xs text-muted-foreground transition hover:text-foreground"
                         >
                           {arrival.hospital_name}
-                        </Link>
+                        </Link> : <p className="mt-0.5 truncate text-xs text-muted-foreground">{arrival.hospital_name}</p>}
                       </div>
                       <span
                         className={
@@ -234,7 +244,7 @@ export function LiveMapWorkspace() {
               </div>
             )}
           </ScrollFade>
-        </aside>
+        </aside>}
       </div>
     </div>
   );

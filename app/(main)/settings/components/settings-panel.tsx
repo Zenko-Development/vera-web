@@ -48,6 +48,7 @@ import { roleApi } from "@/entities/role/api/role.api";
 import { getRoleDisplayName } from "@/entities/role/lib/role-presenters";
 import type { Role } from "@/entities/role/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import { usePermissions } from "@/features/auth/use-permissions";
 import { useUserPreference } from "@/features/preferences/use-user-preference";
 import {
   useUnsavedChanges,
@@ -113,6 +114,7 @@ function setsAreEqual(left: Set<string>, right: Set<string>): boolean {
 
 export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
   const showAlert = useAlert();
+  const { can, canAny } = usePermissions();
   const { requestNavigation } = useUnsavedNavigation();
   const [activeTab, setActiveTab] = useUserPreference(
     "settings:last-tab",
@@ -124,6 +126,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
   const [rolePermissions, setRolePermissions] =
     useState<RolePermissionMap>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [accessLoaded, setAccessLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -158,11 +161,37 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
     return roles.filter((role) => `${role.name} ${getRoleDisplayName(role.name)}`.toLocaleLowerCase("ru-RU").includes(query));
   }, [roleQuery, roles]);
 
-  useEffect(() => {
-    if (initialTab) setActiveTab(initialTab);
-  }, [initialTab, setActiveTab]);
+  const canManageAccess = can("rbac.manage");
+  const canManageGps = can("geo_tracking_policy.manage");
+  const canManageCatalogs = canAny([
+    "sickness.manage",
+    "facility_type.manage",
+    "hospital_resource.read",
+  ]);
+  const availableTabs = useMemo(() => {
+    const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Settings2 }> = [];
+    if (canManageAccess) tabs.push({ id: "general", label: "Общее", icon: Settings2 });
+    if (canManageGps) tabs.push({ id: "gps", label: "Геопозиция и прибытие", icon: Satellite });
+    if (canManageCatalogs) tabs.push({ id: "catalogs", label: "Справочники", icon: Library });
+    if (canManageAccess) tabs.push({ id: "access", label: "Роли и доступ", icon: ShieldCheck });
+    return tabs;
+  }, [canManageAccess, canManageCatalogs, canManageGps]);
+  const resolvedActiveTab = availableTabs.some((tab) => tab.id === activeTab)
+    ? activeTab
+    : availableTabs[0]?.id ?? "general";
 
   useEffect(() => {
+    if (initialTab && availableTabs.some((tab) => tab.id === initialTab)) {
+      setActiveTab(initialTab);
+    }
+  }, [availableTabs, initialTab, setActiveTab]);
+
+  useEffect(() => {
+    if (activeTab !== resolvedActiveTab) setActiveTab(resolvedActiveTab);
+  }, [activeTab, resolvedActiveTab, setActiveTab]);
+
+  useEffect(() => {
+    if (!canManageAccess || resolvedActiveTab !== "access" || accessLoaded) return;
     let isActive = true;
 
     getAccessSnapshot()
@@ -172,6 +201,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
         setPermissions(snapshot.permissions);
         setRolePermissions(snapshot.rolePermissions);
         setLoadError(null);
+        setAccessLoaded(true);
       })
       .catch((error: unknown) => {
         if (isActive) setLoadError(getErrorMessage(error));
@@ -183,7 +213,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [accessLoaded, canManageAccess, resolvedActiveTab]);
 
   const handleRefresh = async () => {
     setIsLoading(true);
@@ -193,6 +223,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
       setPermissions(snapshot.permissions);
       setRolePermissions(snapshot.rolePermissions);
       setLoadError(null);
+      setAccessLoaded(true);
     } catch (error) {
       const message = getErrorMessage(error);
       setLoadError(message);
@@ -398,53 +429,29 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
         role="tablist"
         aria-label="Разделы настроек"
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "general"}
-          onClick={() => requestNavigation(() => setActiveTab("general"))}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
-        >
-          <Settings2 className="size-4" />
-          Общее
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "gps"}
-          onClick={() => requestNavigation(() => setActiveTab("gps"))}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
-        >
-          <Satellite className="size-4" />
-          Геопозиция и прибытие
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "catalogs"}
-          onClick={() => requestNavigation(() => setActiveTab("catalogs"))}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
-        >
-          <Library className="size-4" />
-          Справочники
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "access"}
-          onClick={() => requestNavigation(() => setActiveTab("access"))}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
-        >
-          <ShieldCheck className="size-4" />
-          Роли и доступ
-        </button>
+        {availableTabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={resolvedActiveTab === tab.id}
+              onClick={() => requestNavigation(() => setActiveTab(tab.id))}
+              className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
+            >
+              <Icon className="size-4" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {activeTab === "general" ? (
+      {resolvedActiveTab === "general" ? (
         <GeneralSettings />
-      ) : activeTab === "gps" ? (
+      ) : resolvedActiveTab === "gps" ? (
         <GpsSettings />
-      ) : activeTab === "catalogs" ? (
+      ) : resolvedActiveTab === "catalogs" ? (
         <CatalogsSettings />
       ) : (
         <SettingsSection ariaLabel="Роли и доступ">

@@ -37,6 +37,8 @@ import { hospitalApi } from "@/entities/hospital/api/hospital.api";
 import type { Hospital as HospitalEntity } from "@/entities/hospital/model/types";
 import { userApi } from "@/entities/user/api/user.api";
 import type { User } from "@/entities/user/model/types";
+import { usePermissions } from "@/features/auth/use-permissions";
+import { cn } from "@/lib/utils";
 
 const DashboardMap = dynamic(
   () => import("../map/components/map-canvas").then((module) => module.MapCanvas),
@@ -71,40 +73,43 @@ const emptyData: DashboardData = {
   calls: null,
 };
 
-function fulfilledValue<T>(result: PromiseSettledResult<T>): T | null {
-  return result.status === "fulfilled" ? result.value : null;
-}
-
 export function Dashboard() {
+  const { can } = usePermissions();
   const [data, setData] = useState<DashboardData>(emptyData);
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const canSeeUsers = can("user.manage");
+  const canSeeVehicles = can("ambulance_vehicle.manage");
+  const canSeeDevices = can("device.read");
+  const canSeeHospitals = can("hospital.read");
+  const canSeeArrivals = can("hospital_arrival.read");
+  const canSeeFleet = can("fleet_location.read");
+  const canSeeCalls = can("analytics.read");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [users, vehicles, devices, hospitals, arrivals, fleet, calls] =
-      await Promise.allSettled([
-        userApi.list(),
-        ambulanceVehicleApi.list(),
-        deviceApi.list(),
-        hospitalApi.list(),
-        hospitalArrivalApi.list(),
-        fleetLiveApi.list(),
-        analyticsEmergencyCallApi.list({ limit: 5, offset: 0 }),
-      ]);
+    const [users, vehicles, devices, hospitals, arrivals, fleet, calls] = await Promise.all([
+      canSeeUsers ? userApi.list().catch(() => null) : Promise.resolve(null),
+      canSeeVehicles ? ambulanceVehicleApi.list().catch(() => null) : Promise.resolve(null),
+      canSeeDevices ? deviceApi.list().catch(() => null) : Promise.resolve(null),
+      canSeeHospitals ? hospitalApi.list().catch(() => null) : Promise.resolve(null),
+      canSeeArrivals ? hospitalArrivalApi.list().catch(() => null) : Promise.resolve(null),
+      canSeeFleet ? fleetLiveApi.list().catch(() => null) : Promise.resolve(null),
+      canSeeCalls ? analyticsEmergencyCallApi.list({ limit: 5, offset: 0 }).catch(() => null) : Promise.resolve(null),
+    ]);
 
     setData({
-      users: fulfilledValue(users),
-      vehicles: fulfilledValue(vehicles),
-      devices: fulfilledValue(devices),
-      hospitals: fulfilledValue(hospitals),
-      arrivals: fulfilledValue(arrivals),
-      fleet: fulfilledValue(fleet),
-      calls: fulfilledValue(calls),
+      users,
+      vehicles,
+      devices,
+      hospitals,
+      arrivals,
+      fleet,
+      calls,
     });
     setUpdatedAt(new Date());
     setLoading(false);
-  }, []);
+  }, [canSeeArrivals, canSeeCalls, canSeeDevices, canSeeFleet, canSeeHospitals, canSeeUsers, canSeeVehicles]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
@@ -112,19 +117,23 @@ export function Dashboard() {
   }, [load]);
 
   useEffect(() => {
+    if (!canSeeArrivals && !canSeeFleet) return;
     const interval = window.setInterval(() => {
-      Promise.allSettled([hospitalArrivalApi.list(), fleetLiveApi.list()])
+      Promise.allSettled([
+        canSeeArrivals ? hospitalArrivalApi.list() : Promise.resolve(null),
+        canSeeFleet ? fleetLiveApi.list() : Promise.resolve(null),
+      ])
         .then(([arrivals, fleet]) => {
           setData((current) => ({
             ...current,
-            arrivals: fulfilledValue(arrivals) ?? current.arrivals,
-            fleet: fulfilledValue(fleet) ?? current.fleet,
+            arrivals: arrivals.status === "fulfilled" && arrivals.value !== null ? arrivals.value : current.arrivals,
+            fleet: fleet.status === "fulfilled" && fleet.value !== null ? fleet.value : current.fleet,
           }));
-          if (arrivals.status === "fulfilled" || fleet.status === "fulfilled") setUpdatedAt(new Date());
+          if ((arrivals.status === "fulfilled" && arrivals.value !== null) || (fleet.status === "fulfilled" && fleet.value !== null)) setUpdatedAt(new Date());
         });
     }, 15_000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [canSeeArrivals, canSeeFleet]);
 
   const deviceSummary = useMemo(() => {
     if (!data.devices) return null;
@@ -149,11 +158,23 @@ export function Dashboard() {
       ),
     [data.hospitals],
   );
+  const hasMap = canSeeHospitals || canSeeArrivals || canSeeFleet;
+  const operationalCards = Number(canSeeArrivals) + Number(canSeeCalls);
+  const metricCount = Number(canSeeUsers) + Number(canSeeVehicles) + Number(canSeeDevices) + Number(canSeeHospitals);
+  const hasOperationalContent = hasMap || operationalCards > 0;
 
   return (
-    <main className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_clamp(15rem,24vw,20rem)] gap-3 overflow-hidden">
-      <div className="grid min-h-0 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] gap-3">
-        <section
+    <main className={cn(
+      "grid min-h-0 flex-1 gap-3 overflow-hidden",
+      hasOperationalContent && metricCount > 0
+        ? "grid-cols-[minmax(0,1fr)_clamp(15rem,24vw,20rem)]"
+        : "grid-cols-1",
+    )}>
+      {hasOperationalContent && <div className={cn(
+        "grid min-h-0 gap-3",
+        hasMap && operationalCards > 0 ? "grid-rows-[minmax(0,3fr)_minmax(0,2fr)]" : "grid-rows-1",
+      )}>
+        {hasMap && <section
           className="relative isolate min-h-0 overflow-hidden rounded-xl border bg-card text-card-foreground"
           aria-label="Карта сосудистых центров и активных машин"
         >
@@ -162,54 +183,55 @@ export function Dashboard() {
             arrivals={data.arrivals ?? []}
             fleet={data.fleet ?? undefined}
           />
-        </section>
+        </section>}
 
-        <section
-          className="grid min-h-0 grid-cols-2 gap-3"
+        {operationalCards > 0 && <section
+          className={cn("grid min-h-0 gap-3", operationalCards > 1 ? "grid-cols-2" : "grid-cols-1")}
           aria-label="Оперативная информация"
         >
-          <ArrivalsCard arrivals={data.arrivals} loading={loading && !updatedAt} />
-          <CallsCard calls={data.calls} loading={loading && !updatedAt} />
-        </section>
-      </div>
+          {canSeeArrivals && <ArrivalsCard arrivals={data.arrivals} loading={loading && !updatedAt} />}
+          {canSeeCalls && <CallsCard calls={data.calls} loading={loading && !updatedAt} />}
+        </section>}
+      </div>}
 
-      <aside
-        className="grid min-h-0 grid-rows-4 gap-3"
+      {metricCount > 0 && <aside
+        className={cn("grid min-h-0 gap-3", !hasOperationalContent && "ml-auto w-full max-w-sm")}
+        style={{ gridTemplateRows: `repeat(${metricCount}, minmax(0, 1fr))` }}
         aria-label="Ключевые показатели"
       >
-        <MetricCard
+        {canSeeUsers && <MetricCard
           href="/users"
           icon={UsersRound}
           title="Пользователи с доступом"
           value={data.users ? `${activeUsers} / ${data.users.length}` : null}
           description="активные учётные записи"
           loading={loading && !updatedAt}
-        />
-        <MetricCard
+        />}
+        {canSeeVehicles && <MetricCard
           href="/fleet"
           icon={Ambulance}
           title="Активные машины"
           value={data.vehicles ? `${activeVehicles} / ${data.vehicles.length}` : null}
           description={data.fleet ? `На смене: ${data.fleet.length}` : "доступны для начала смены"}
           loading={loading && !updatedAt}
-        />
-        <MetricCard
+        />}
+        {canSeeDevices && <MetricCard
           href="/fleet"
           icon={Tablet}
           title="Активные планшеты"
           value={deviceSummary ? `${deviceSummary.active} / ${deviceSummary.total}` : null}
           description={deviceSummary?.hasHeartbeat ? `На связи за 5 минут: ${deviceSummary.recent}` : "Данные о последней связи пока не поступают"}
           loading={loading && !updatedAt}
-        />
-        <MetricCard
+        />}
+        {canSeeHospitals && <MetricCard
           href="/hospitals"
           icon={Hospital}
           title="Сосудистые центры"
           value={data.hospitals ? String(data.hospitals.length) : null}
           description="учреждений в системе"
           loading={loading && !updatedAt}
-        />
-      </aside>
+        />}
+      </aside>}
     </main>
   );
 }
@@ -226,7 +248,7 @@ function MetricCard({ href, icon: Icon, title, value, description, loading }: { 
         </CardHeader>
         <CardContent className="gap-2">
           {loading ? <LoaderCircle className="my-1 size-5 animate-spin text-muted-foreground" /> : <p className="text-4xl font-semibold tracking-tight">{value ?? "—"}</p>}
-          <p className="truncate text-xs text-muted-foreground">{value === null && !loading ? "Нет доступа к данным" : description}</p>
+          <p className="truncate text-xs text-muted-foreground">{value === null && !loading ? "Данные временно недоступны" : description}</p>
         </CardContent>
         <ArrowUpRight strokeWidth={1} className="absolute right-3 bottom-3 size-5 shrink-0 rotate-45 text-muted-foreground opacity-0 transition group-hover:rotate-0 group-hover:opacity-100" />
       </Card>

@@ -1,6 +1,7 @@
 import { AuthGuard } from "@/features/components/AuthGuard";
 import { Header } from "@/widgets/header/header";
 import { SettingsPanel } from "./components/settings-panel";
+import { settingsPermissions } from "@/features/auth/access-control";
 
 const settingsSections = ["general", "gps", "catalogs", "access"] as const;
 
@@ -19,6 +20,7 @@ export default async function Settings({
     <AuthGuard
       requireAuth={true}
       redirectTo="/login"
+      permissions={settingsPermissions}
       className="h-full min-h-0"
     >
       <Header title="Настройки" />

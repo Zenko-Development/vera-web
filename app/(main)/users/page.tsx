@@ -7,6 +7,7 @@ export default function UsersPage() {
     <AuthGuard
       requireAuth={true}
       redirectTo="/login"
+      permissions={["user.manage"]}
       className="h-full min-h-0"
     >
       <Header title="Пользователи" />

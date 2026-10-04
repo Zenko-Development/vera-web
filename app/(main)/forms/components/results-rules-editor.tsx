@@ -32,12 +32,12 @@ const operatorNames: Record<ChecklistRuleConditionOperator, string> = {
 const equalityOperators: ChecklistRuleConditionOperator[] = ["equals", "not_equals"];
 const numberOperators = Object.keys(operatorNames) as ChecklistRuleConditionOperator[];
 
-type Props = { version: ChecklistVersion; data: FormVersionData; onChanged: () => Promise<void> };
+type Props = { version: ChecklistVersion; data: FormVersionData; onChanged: () => Promise<void>; canManage: boolean };
 type DeleteTarget = { kind: "result" | "rule" | "condition"; id: string; label: string };
 
-export function ResultsRulesEditor({ version, data, onChanged }: Props) {
+export function ResultsRulesEditor({ version, data, onChanged, canManage }: Props) {
   const showAlert = useAlert();
-  const editable = version.status === "draft";
+  const editable = canManage && version.status === "draft";
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(data.rules[0]?.id ?? null);
   const [resultForm, setResultForm] = useState<ChecklistResult | "new" | null>(null);
   const [resultTitle, setResultTitle] = useState("");
