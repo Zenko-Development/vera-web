@@ -122,7 +122,7 @@ export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto pb-6 pt-3">
+      <main className="flex min-h-0 flex-1 overflow-hidden pb-3 pt-3">
         <HospitalOperations fixedHospitalId={hospital.id} />
       </main>
 

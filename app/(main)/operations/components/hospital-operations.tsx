@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollFade } from "@/components/ui/scroll-fade";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { equipmentApi } from "@/entities/equipment/api/equipment.api";
@@ -256,7 +255,7 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
     [arrivals, hospitalId],
   );
 
-  return <div className="flex min-h-0 flex-1 flex-col gap-3 py-3">
+  return <div className="flex h-full min-h-0 flex-1 flex-col gap-1">
     {error && <Alert variant="destructive"><AlertTitle>Ошибка загрузки</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
     <div className="rounded-xl border bg-card p-3 text-card-foreground">
       <div className="flex flex-wrap items-end gap-3 border-b pb-3">
@@ -268,15 +267,14 @@ export function HospitalOperations({ fixedHospitalId }: { fixedHospitalId?: stri
       </div>
       <nav className="mt-2 flex flex-wrap gap-1" aria-label="Разделы работы центра">{([ ["arrivals", "Прибытия", Ambulance], ["resources", "Ресурсы", Wrench], ["staff", "Сотрудники", UsersRound], ["areas", "Зоны", Map] ] as const).filter(([id]) => availableSections.includes(id)).map(([id, label, Icon]) => <Button key={id} size="sm" variant={activeSection === id ? "default" : "ghost"} onClick={() => setSection(id)}><Icon />{label}</Button>)}</nav>
     </div>
-    <ScrollFade
-      className="min-h-0 flex-1 [&_.bg-background]:bg-card [&_.bg-background]:text-card-foreground"
-      viewportClassName="pb-6"
-    >
+    <div className={activeSection === "arrivals" || activeSection === "areas"
+      ? "min-h-0 flex-1 overflow-y-auto pt-1 xl:overflow-hidden [&_.bg-background]:bg-card [&_.bg-background]:text-card-foreground"
+      : "min-h-0 flex-1 overflow-y-auto pb-4 pt-1 [&_.bg-background]:bg-card [&_.bg-background]:text-card-foreground"}>
       {!selectedHospital && !loading ? <Empty text="Создайте или выберите больницу." /> : !activeSection ? <Empty text="Для работы с центром у вашей роли нет дополнительных разрешений." /> : activeSection === "arrivals" ? <HospitalArrivalsPanel hospital={selectedHospital} arrivals={visibleArrivals} />
       : activeSection === "resources" ? <div className="grid gap-4 xl:grid-cols-2"><ResourceTable title="Оборудование" items={equipment} names={equipmentNames} busy={busy} canManage={canManageResources} canChangeStatus={canChangeResourceStatus} onAdd={() => openResource("equipment")} onStatus={(id, status) => void changeStatus("equipment", id, status)} onRemove={(id) => void removeResource("equipment", id)} /><ResourceTable title="Операционные" items={rooms} names={operatingNames} busy={busy} canManage={canManageResources} canChangeStatus={canChangeResourceStatus} onAdd={() => openResource("operating")} onStatus={(id, status) => void changeStatus("operating", id, status)} onRemove={(id) => void removeResource("operating", id)} /></div>
       : activeSection === "staff" ? <section className="rounded-xl border bg-background"><header className="flex flex-wrap items-center gap-2 border-b p-4"><div className="mr-auto"><h2 className="font-semibold">Назначенные сотрудники</h2><p className="text-sm text-muted-foreground">Сотрудник может быть назначен в несколько больниц</p></div>{canReadUsers && <StaffUserSelect users={users} assignedIds={staffIds} value={staffUserId} onValueChange={setStaffUserId} disabled={busy} />}{canReadUsers && <Button size="sm" onClick={() => void assignStaff()} disabled={!staffUserId || busy}><Plus />Назначить</Button>}</header>{staffIds.length ? <Table><TableBody>{staffIds.map((id) => <TableRow key={id}><TableCell className="font-medium">{userNames[id] ?? id}</TableCell><TableCell className="w-16"><Button size="icon-sm" variant="ghost" aria-label={`Удалить назначение ${userNames[id] ?? id}`} onClick={() => void revokeStaff(id)} disabled={busy}><Trash2 /></Button></TableCell></TableRow>)}</TableBody></Table> : <Empty text="Сотрудники не назначены." />}</section>
       : <ServiceAreasPanel areas={hospitalAreas} hospital={selectedHospital} busy={busy} onCreate={() => openArea("new")} onEdit={openArea} onRemove={(area) => void removeArea(area)} />}
-    </ScrollFade>
+    </div>
 
     <Dialog open={resourceTarget !== null} onOpenChange={(open) => { if (!open && !busy) setResourceTarget(null); }}><DialogContent><form className="contents" onSubmit={saveResource}><DialogHeader><DialogTitle>Добавить физический ресурс</DialogTitle><DialogDescription>{selectedHospital?.name}</DialogDescription></DialogHeader><div className="grid gap-4"><div className="grid gap-2"><Label>Тип</Label><Select value={resourceTypeId || null} onValueChange={(value) => setResourceTypeId(value ?? "")}><SelectTrigger className="w-full"><SelectValue placeholder="Выберите тип" /></SelectTrigger><SelectContent>{(resourceTarget?.kind === "equipment" ? equipmentTypes : operatingTypes).map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select></div><div className="grid gap-2"><Label htmlFor="resource-label">Метка</Label><Input id="resource-label" value={resourceLabel} onChange={(event) => setResourceLabel(event.target.value)} placeholder="Например, КТ-01" required /></div></div><DialogFooter><Button type="button" variant="outline" onClick={() => setResourceTarget(null)}>Отмена</Button><Button type="submit" disabled={busy || !resourceTypeId || !resourceLabel.trim()}>Добавить</Button></DialogFooter></form></DialogContent></Dialog>
     {areaTarget && (

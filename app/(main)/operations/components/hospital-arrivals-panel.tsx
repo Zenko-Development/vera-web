@@ -47,7 +47,7 @@ export function HospitalArrivalsPanel({
   );
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-background">
+    <section className="flex min-h-full flex-col overflow-hidden rounded-xl border bg-background xl:h-full xl:min-h-0">
       <header className="flex items-center justify-between gap-3 border-b p-4">
         <div>
           <h2 className="font-semibold">Ожидаемые машины</h2>
@@ -61,8 +61,8 @@ export function HospitalArrivalsPanel({
         </div>
       </header>
 
-      <div className="grid min-h-96 xl:grid-cols-[minmax(440px,0.9fr)_minmax(400px,1.1fr)]">
-        <div className="min-w-0 border-b p-4 xl:border-b-0 xl:border-r">
+      <div className="grid min-h-96 flex-1 xl:min-h-0 xl:grid-cols-[minmax(440px,0.9fr)_minmax(400px,1.1fr)]">
+        <div className="min-w-0 overflow-y-auto border-b p-4 xl:min-h-0 xl:border-b-0 xl:border-r">
           {arrivals.length > 0 ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               {arrivals.map((arrival) => (
@@ -98,7 +98,7 @@ export function HospitalArrivalsPanel({
           )}
         </div>
 
-        <div className="relative isolate z-0 min-h-80 overflow-hidden">
+        <div className="relative isolate z-0 min-h-80 overflow-hidden xl:min-h-0">
           <ArrivalsMap hospitals={mappedHospitals} arrivals={arrivals} />
           {mappedVehiclesCount === 0 && (
             <div className="pointer-events-none absolute inset-x-4 top-4 z-500 rounded-lg bg-popover/90 p-3 text-center text-xs text-muted-foreground shadow-sm backdrop-blur-sm">

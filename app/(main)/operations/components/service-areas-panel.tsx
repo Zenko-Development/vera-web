@@ -64,7 +64,7 @@ export function ServiceAreasPanel({
   }, [hospital]);
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-background">
+    <section className="flex min-h-full flex-col overflow-hidden rounded-xl border bg-background xl:h-full xl:min-h-0">
       <header className="flex items-center justify-between border-b p-4">
         <div>
           <h2 className="font-semibold">Зоны обслуживания</h2>
@@ -78,11 +78,11 @@ export function ServiceAreasPanel({
         </Button>
       </header>
 
-      <div className="grid min-h-96 xl:grid-cols-[minmax(480px,0.9fr)_minmax(360px,1.1fr)]">
-        <div className="min-w-0 overflow-x-auto border-b xl:border-b-0 xl:border-r">
+      <div className="grid min-h-96 flex-1 xl:min-h-0 xl:grid-cols-[minmax(480px,0.9fr)_minmax(360px,1.1fr)]">
+        <div className="min-w-0 overflow-auto border-b xl:min-h-0 xl:border-b-0 xl:border-r">
           {areas.length > 0 ? (
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead>Название</TableHead>
                   <TableHead>Приоритет</TableHead>
@@ -144,7 +144,7 @@ export function ServiceAreasPanel({
           )}
         </div>
 
-        <div className="relative isolate z-0 min-h-80 overflow-hidden">
+        <div className="relative isolate z-0 min-h-80 overflow-hidden xl:min-h-0">
           <ServiceAreasOverviewMap
             areas={areas}
             hospitalPoint={hospitalPoint}

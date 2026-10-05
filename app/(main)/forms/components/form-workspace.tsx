@@ -72,6 +72,7 @@ export function FormWorkspace({
   const passedChecks = publicationChecks.filter((check) => check.valid).length;
   const readyForPublication = passedChecks === publicationChecks.length;
   const currentStepIndex = steps.findIndex((item) => item.id === step);
+  const isRestoringArchived = selectedVersion?.status === "archived";
 
   const loadVersions = useCallback(async () => {
     setVersionsLoading(true);
@@ -142,21 +143,25 @@ export function FormWorkspace({
   };
 
   const publish = async () => {
-    if (!selectedVersion || selectedVersion.status !== "draft") return;
+    if (!selectedVersion || !["draft", "archived"].includes(selectedVersion.status)) return;
     setVersionAction("publish");
     try {
       const published = await checklistVersionApi.publish(selectedVersion.id);
       setVersions((current) => current.map((version) => version.id === published.id ? published : version.status === "published" ? { ...version, status: "archived" } : version));
       setPublishConfirmOpen(false);
-      showAlert({ title: "Форма опубликована", description: "Новая редакция доступна приложению бригады.", type: "success" });
+      showAlert({
+        title: isRestoringArchived ? "Редакция снова опубликована" : "Форма опубликована",
+        description: "Выбранная редакция доступна приложению бригады.",
+        type: "success",
+      });
     } catch (cause) {
       showAlert({ title: "Не удалось опубликовать форму", description: getFormsError(cause), type: "error" });
     } finally { setVersionAction(null); }
   };
 
   const requestPublish = () => {
-    if (!selectedVersion || selectedVersion.status !== "draft") return;
-    if (!readyForPublication) {
+    if (!selectedVersion || !["draft", "archived"].includes(selectedVersion.status)) return;
+    if (selectedVersion.status === "draft" && !readyForPublication) {
       setReadinessOpen(true);
       return;
     }
@@ -166,6 +171,10 @@ export function FormWorkspace({
   const changeStatus = (status: string | null) => {
     if (!selectedVersion || !status || status === selectedVersion.status) return;
     if (selectedVersion.status === "draft" && status === "published") {
+      requestPublish();
+      return;
+    }
+    if (selectedVersion.status === "archived" && status === "published") {
       requestPublish();
       return;
     }
@@ -224,7 +233,7 @@ export function FormWorkspace({
                     </p>
                   </div>
                 )}
-                {canPublish && selectedVersion?.status === "draft" && (
+                {canPublish && (selectedVersion?.status === "draft" || selectedVersion?.status === "archived") && (
                   <Button
                     type="button"
                     size="sm"
@@ -236,7 +245,7 @@ export function FormWorkspace({
                     ) : (
                       <Send />
                     )}
-                    Опубликовать
+                    {selectedVersion.status === "archived" ? "Опубликовать снова" : "Опубликовать"}
                   </Button>
                 )}
               </div>
@@ -293,7 +302,7 @@ export function FormWorkspace({
                   <SelectItem value="draft" disabled={selectedVersion.status !== "draft"}>
                     Черновик
                   </SelectItem>
-                  <SelectItem value="published" disabled={selectedVersion.status === "archived"}>
+                  <SelectItem value="published">
                     Опубликована
                   </SelectItem>
                   <SelectItem value="archived" disabled={selectedVersion.status === "draft"}>
@@ -466,9 +475,11 @@ export function FormWorkspace({
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Опубликовать черновик?</DialogTitle>
+              <DialogTitle>{isRestoringArchived ? "Снова опубликовать редакцию?" : "Опубликовать черновик?"}</DialogTitle>
               <DialogDescription>
-                Редакция станет доступна бригадам. Текущая опубликованная редакция автоматически перейдёт в архив, а для следующих изменений потребуется создать новый черновик.
+                {isRestoringArchived
+                  ? "Архивная редакция снова станет доступна бригадам, а текущая опубликованная редакция автоматически перейдёт в архив."
+                  : "Редакция станет доступна бригадам. Текущая опубликованная редакция автоматически перейдёт в архив, а для следующих изменений потребуется создать новый черновик."}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -485,7 +496,7 @@ export function FormWorkspace({
                 ) : (
                   <Send />
                 )}
-                Опубликовать
+                {isRestoringArchived ? "Опубликовать снова" : "Опубликовать"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -501,7 +512,7 @@ export function FormWorkspace({
             <DialogHeader>
               <DialogTitle>Переместить редакцию в архив?</DialogTitle>
               <DialogDescription>
-                Она перестанет быть текущей опубликованной редакцией формы. Вернуть архивную редакцию в публикацию нельзя.
+                Она перестанет быть текущей опубликованной редакцией формы. При необходимости её можно будет опубликовать снова.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

@@ -1,45 +1,81 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as QRCodeGenerator from "qrcode";
+import QRCodeStyling, { type Options } from "qr-code-styling";
 import { LoaderCircle } from "lucide-react";
 
 export function QrCode({ value, label }: { value: string; label: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const qrRef = useRef<QRCodeStyling | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !value) return;
-    let active = true;
-    setError(false);
+    const options: Options = {
+      width: 620,
+      height: 620,
+      type: "canvas",
+      margin: 4,
+      qrOptions: { errorCorrectionLevel: "H" },
+      dotsOptions: {
+        color: "#000000",
+        type: "rounded", // ← скругление модулей
+      },
+      cornersSquareOptions: {
+        color: "#000000",
+        type: "extra-rounded", // ← скругление угловых маркеров
+      },
+      cornersDotOptions: {
+        color: "#000000",
+        type: "dot",
+      },
+    };
 
-    QRCodeGenerator.toCanvas(canvas, value, {
-      width: 240,
-      margin: 2,
-      errorCorrectionLevel: "M",
-      color: { dark: "#000000", light: "#ffffff" },
-    }).catch(() => {
-      if (active) setError(true);
-    });
+    const qr = new QRCodeStyling(options);
+    qrRef.current = qr;
+
+    if (containerRef.current) {
+      qr.append(containerRef.current);
+    }
 
     return () => {
-      active = false;
-      const context = canvas.getContext("2d");
-      context?.clearRect(0, 0, canvas.width, canvas.height);
+      qrRef.current = null;
+      if (containerRef.current) containerRef.current.innerHTML = "";
     };
+  }, []);
+
+  useEffect(() => {
+    const qr = qrRef.current;
+    if (!qr) return;
+
+    if (!value) {
+      setError(false);
+      const canvas = containerRef.current?.querySelector("canvas");
+      const ctx = canvas?.getContext("2d");
+      if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
+    setError(false);
+    Promise.resolve(qr.update({ data: value })).catch(() => setError(true));
   }, [value]);
 
   return (
-    <div className="flex min-h-60 items-center  justify-center rounded-xl border bg-white p-3">
+    <div className="flex w-full aspect-square items-center justify-center rounded-xl border bg-white p-3">
       {error ? (
         <p className="max-w-52 text-center text-sm text-red-700">
           Не удалось сформировать QR-код. Введите данные вручную.
         </p>
       ) : (
         <>
-          <canvas ref={canvasRef} role="img" aria-label={label} className="size-60 max-w-full" />
-          {!value && <LoaderCircle className="animate-spin text-black" />}
+          <div
+            ref={containerRef}
+            role="img"
+            aria-label={label}
+            className="flex h-full w-full items-center justify-center [&>canvas]:h-full [&>canvas]:w-full"
+          />
+          {!value && (
+            <LoaderCircle className="absolute h-8 w-8 animate-spin text-black" />
+          )}
         </>
       )}
     </div>
