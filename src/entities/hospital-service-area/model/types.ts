@@ -20,4 +20,7 @@ export type HospitalServiceAreaRequest = Pick<
 >;
 
 export type CreateHospitalServiceAreaRequest = HospitalServiceAreaRequest;
-export type UpdateHospitalServiceAreaRequest = HospitalServiceAreaRequest;
+export type UpdateHospitalServiceAreaRequest = Omit<
+  HospitalServiceAreaRequest,
+  "hospital_id"
+>;

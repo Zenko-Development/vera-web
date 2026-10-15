@@ -4,12 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Ambulance, Copy, KeyRound, LoaderCircle, Plus, PowerOff, RefreshCw, Tablet, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { QrCode } from "@/components/ui/qr-code";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Toolbar } from "@/components/ui/toolbar";
 import { ambulanceVehicleApi } from "@/entities/ambulance-vehicle/api/ambulance-vehicle.api";
 import type { AmbulanceVehicle, AmbulanceVehicleStatus } from "@/entities/ambulance-vehicle/model/types";
 import { deviceApi } from "@/entities/device/api/device.api";
@@ -196,25 +198,27 @@ export function FleetManagement() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 py-3 pb-6">
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl border bg-card px-4 py-3 text-card-foreground">
-        {canManageVehicles && <SummaryStat value={loading ? null : `${vehicles.filter((item) => item.status === "active").length} / ${vehicles.length}`} label="Активные машины" />}
-        {canManageVehicles && <SummaryStat value={loading ? null : String(vehicles.filter((item) => item.status === "maintenance").length)} label="На обслуживании" tone="warning" />}
-        {canReadDevices && <SummaryStat value={loading ? null : `${devices.filter((item) => item.status === "active").length} / ${devices.length}`} label="Активные планшеты" />}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 text-card-foreground">
-        {canManageVehicles && <Button type="button" size="sm" variant={visibleView === "vehicles" ? "default" : "ghost"} onClick={() => setView("vehicles")}><Ambulance />Машины</Button>}
-        {canUseDeviceSection && <Button type="button" size="sm" variant={visibleView === "devices" ? "default" : "ghost"} onClick={() => setView("devices")}><Tablet />Планшеты</Button>}
-        <Button className="ml-auto" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          <RefreshCw className={loading ? "animate-spin" : ""} /> Обновить
+      <Toolbar>
+        <ButtonGroup aria-label="Раздел парка">
+          {canManageVehicles && <Button type="button" size="sm" variant={visibleView === "vehicles" ? "contrast" : "outline"} aria-pressed={visibleView === "vehicles"} onClick={() => setView("vehicles")}><Ambulance />Машины</Button>}
+          {canUseDeviceSection && <Button type="button" size="sm" variant={visibleView === "devices" ? "contrast" : "outline"} aria-pressed={visibleView === "devices"} onClick={() => setView("devices")}><Tablet />Планшеты</Button>}
+        </ButtonGroup>
+        <div className="order-last flex w-full flex-wrap items-center gap-x-6 gap-y-2 border-t pt-2 lg:order-none lg:w-auto lg:border-0 lg:pt-0">
+          {canManageVehicles && <SummaryStat value={loading ? null : `${vehicles.filter((item) => item.status === "active").length} / ${vehicles.length}`} label="Активные машины" />}
+          {canManageVehicles && <SummaryStat value={loading ? null : String(vehicles.filter((item) => item.status === "maintenance").length)} label="На обслуживании" tone="warning" />}
+          {canReadDevices && <SummaryStat value={loading ? null : `${devices.filter((item) => item.status === "active").length} / ${devices.length}`} label="Активные планшеты" />}
+        </div>
+        <Button className="ml-auto" variant="outline" size="icon-sm" aria-label="Обновить парк" onClick={() => void load()} disabled={loading}>
+          <RefreshCw className={loading ? "animate-spin" : ""} />
         </Button>
-      </div>
+        {visibleView === "vehicles" && canManageVehicles && <Button size="sm" onClick={() => openVehicle("new")}><Plus /> Добавить машину</Button>}
+        {visibleView === "devices" && canProvisionDevices && <Button size="sm" onClick={() => void provision()} disabled={busy}><Plus /> Зарегистрировать планшет</Button>}
+      </Toolbar>
       {error && <Alert variant="destructive" className="mb-3"><AlertTitle>Не удалось загрузить парк</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {visibleView === "vehicles" ? <section className="overflow-hidden rounded-xl border bg-card text-card-foreground">
-          <header className="flex items-center justify-between gap-3 border-b p-4">
+          <header className="border-b p-4">
             <div><h2 className="font-semibold">Машины скорой</h2><p className="text-sm text-muted-foreground">Добавьте машину и оставьте статус «Активна», чтобы планшет мог открыть на ней смену.</p></div>
-            {canManageVehicles && <Button size="sm" onClick={() => openVehicle("new")}><Plus /> Добавить машину</Button>}
           </header>
           <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Номер</TableHead><TableHead>Статус</TableHead><TableHead className="w-24" /></TableRow></TableHeader>
             <TableBody>{vehicles.map((vehicle) => <TableRow key={vehicle.id}><TableCell className="font-medium"><span className="inline-flex items-center gap-2"><Ambulance className="size-4 text-muted-foreground" />{vehicle.car_number}</span></TableCell><TableCell><VehicleStatus status={vehicle.status} /></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => openVehicle(vehicle)}>Изменить</Button></TableCell></TableRow>)}</TableBody>
@@ -223,9 +227,8 @@ export function FleetManagement() {
           {!loading && vehicles.length === 0 && <EmptyFleet icon={Ambulance} title="Машин пока нет" description="Добавьте первую машину, чтобы бригада могла выбрать её при начале смены." action="Добавить машину" onAction={() => openVehicle("new")} />}
         </section>
         : <section className="overflow-hidden rounded-xl border bg-card text-card-foreground">
-          <header className="flex items-center justify-between gap-3 border-b p-4">
+          <header className="border-b p-4">
             <div><h2 className="font-semibold">Планшеты</h2><p className="text-sm text-muted-foreground">Зарегистрируйте устройство и сразу сохраните одноразовый секрет на планшете.</p></div>
-            {canProvisionDevices && <Button size="sm" onClick={() => void provision()} disabled={busy}><Plus /> Зарегистрировать планшет</Button>}
           </header>
           <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Идентификатор устройства</TableHead><TableHead>Статус</TableHead><TableHead>Последняя связь</TableHead><TableHead className="w-72" /></TableRow></TableHeader>
             <TableBody>{devices.map((device) => <TableRow key={device.id}><TableCell className="max-w-64 truncate font-mono text-xs"><span className="inline-flex items-center gap-2"><Tablet className="size-4 text-muted-foreground" />{device.device_id}</span></TableCell><TableCell>{device.status === "active" ? "Активен" : "Отключён"}</TableCell><TableCell className="text-muted-foreground">{device.last_seen_at ? formatDate(device.last_seen_at) : "Нет данных"}</TableCell><TableCell><div className="flex justify-end gap-1">{canResetDeviceSecret && <Button variant="ghost" size="sm" onClick={() => setResetTarget(device)} disabled={busy || device.status !== "active"}><KeyRound /> Заменить секрет</Button>}{canChangeDeviceStatus && device.status === "active" && <Button variant="ghost" size="icon-sm" aria-label="Отключить планшет" onClick={() => setDisableTarget(device)} disabled={busy}><PowerOff /></Button>}{canDeleteDevice && <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" aria-label="Удалить планшет" onClick={() => setDeleteTarget(device)} disabled={busy}><Trash2 /></Button>}</div></TableCell></TableRow>)}</TableBody>

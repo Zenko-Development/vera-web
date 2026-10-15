@@ -39,7 +39,6 @@ import {
   TableCell,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { geoTrackingPolicyApi } from "@/entities/geo-tracking-policy/api/geo-tracking-policy.api";
 import type { GeoTrackingPolicy } from "@/entities/geo-tracking-policy/model/types";
 import { permissionApi } from "@/entities/permission/api/permission.api";
@@ -114,6 +113,32 @@ function setsAreEqual(left: Set<string>, right: Set<string>): boolean {
   return [...left].every((value) => right.has(value));
 }
 
+const permissionGroupOrder = [
+  "Пользователи",
+  "Сосудистые центры",
+  "Формы",
+  "Машины и планшеты",
+  "Вызовы и карта",
+  "Справочники",
+  "Геопозиция",
+  "Аналитика и аудит",
+  "Система доступа",
+  "Другие",
+] as const;
+
+function getPermissionGroup(name: string): (typeof permissionGroupOrder)[number] {
+  if (name.startsWith("user")) return "Пользователи";
+  if (name.startsWith("hospital")) return "Сосудистые центры";
+  if (name.startsWith("checklist")) return "Формы";
+  if (name.startsWith("device") || name.startsWith("ambulance_vehicle")) return "Машины и планшеты";
+  if (name.startsWith("emergency_call") || name.startsWith("fleet_location")) return "Вызовы и карта";
+  if (name.startsWith("facility_type") || name.startsWith("sickness") || name.startsWith("hospital_resource")) return "Справочники";
+  if (name.startsWith("geo_tracking_policy")) return "Геопозиция";
+  if (name.startsWith("analytics") || name.startsWith("audit")) return "Аналитика и аудит";
+  if (name.startsWith("rbac") || name.startsWith("role") || name.startsWith("permission")) return "Система доступа";
+  return "Другие";
+}
+
 export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
   const showAlert = useAlert();
   const { can, canAny } = usePermissions();
@@ -152,11 +177,6 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
   const [renamedRoleName, setRenamedRoleName] = useState("");
   const [isRoleMutationSaving, setIsRoleMutationSaving] = useState(false);
 
-  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
-  const [permissionName, setPermissionName] = useState("");
-  const [permissionDescription, setPermissionDescription] = useState("");
-  const [isPermissionSaving, setIsPermissionSaving] = useState(false);
-
   const hasPermissionChanges = useMemo(
     () => !setsAreEqual(initialPermissionIds, draftPermissionIds),
     [initialPermissionIds, draftPermissionIds],
@@ -166,6 +186,15 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
     if (!query) return roles;
     return roles.filter((role) => `${role.name} ${getRoleDisplayName(role.name)}`.toLocaleLowerCase("ru-RU").includes(query));
   }, [roleQuery, roles]);
+  const permissionGroups = useMemo(
+    () => permissionGroupOrder
+      .map((label) => ({
+        label,
+        items: permissions.filter((permission) => getPermissionGroup(permission.name) === label),
+      }))
+      .filter((group) => group.items.length > 0),
+    [permissions],
+  );
 
   const canManageAccess = can("rbac.manage");
   const canManageGps = can("geo_tracking_policy.manage");
@@ -448,41 +477,6 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
     }
   };
 
-  const handleCreatePermission = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
-    const name = permissionName.trim();
-    if (!name) return;
-
-    setIsPermissionSaving(true);
-    try {
-      const permission = await permissionApi.create({
-        name,
-        description: permissionDescription.trim(),
-      });
-      setPermissions((current) =>
-        sortPermissions([...current, permission]),
-      );
-      setPermissionName("");
-      setPermissionDescription("");
-      setIsPermissionDialogOpen(false);
-      showAlert({
-        title: "Право создано",
-        description: `Право «${getPermissionDisplayName(permission.name)}» теперь можно назначить роли.`,
-        type: "success",
-      });
-    } catch (error) {
-      showAlert({
-        title: "Не удалось создать право",
-        description: getErrorMessage(error),
-        type: "error",
-      });
-    } finally {
-      setIsPermissionSaving(false);
-    }
-  };
-
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-card text-card-foreground ring-1 ring-border md:flex-row">
       <div
@@ -499,7 +493,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
               role="tab"
               aria-selected={resolvedActiveTab === tab.id}
               onClick={() => requestNavigation(() => setActiveTab(tab.id))}
-              className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground"
+              className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-selected:bg-foreground aria-selected:text-background"
             >
               <Icon className="size-4" />
               {tab.label}
@@ -540,14 +534,6 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
               placeholder="Найти роль"
               aria-label="Поиск ролей"
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsPermissionDialogOpen(true)}
-            >
-              <KeyRound /> Новое право
-            </Button>
             <Button
               type="button"
               size="sm"
@@ -677,50 +663,35 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
                 <KeyRound className="mb-3 size-5 text-muted-foreground" />
                 <p className="text-sm font-medium">Права ещё не созданы</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Закройте окно и создайте первое право доступа.
+                  Каталог прав формируется сервером. Проверьте инициализацию системы.
                 </p>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-xl border">
-                {permissions.map((permission, index) => {
-                  const checkboxId = `role-${selectedRole?.id}-permission-${permission.id}`;
-                  const checked = draftPermissionIds.has(permission.id);
-
-                  return (
-                    <div
-                      key={permission.id}
-                      className={`flex items-start gap-3 px-4 py-3 transition hover:bg-muted/50 ${
-                        index > 0 ? "border-t" : ""
-                      }`}
-                    >
-                      <Checkbox
-                        id={checkboxId}
-                        checked={checked}
-                        onCheckedChange={(nextChecked) =>
-                          handleDraftPermissionChange(
-                            permission.id,
-                            nextChecked,
-                          )
-                        }
-                        disabled={isRolePermissionsSaving}
-                        className="mt-0.5"
-                      />
-                      <Label
-                        htmlFor={checkboxId}
-                        className="min-w-0 flex-1 cursor-pointer items-start"
-                      >
-                        <span className="min-w-0">
-                          <span className="block font-medium leading-4">
-                            {getPermissionDisplayName(permission.name)}
-                          </span>
-                          <span className="mt-1 block text-sm leading-relaxed font-normal text-muted-foreground">
-                            {permission.description || "Без описания"}
-                          </span>
-                        </span>
-                      </Label>
+              <div className="space-y-5">
+                {permissionGroups.map((group) => (
+                  <section key={group.label} aria-labelledby={`permission-group-${group.label}`}>
+                    <h3 id={`permission-group-${group.label}`} className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {group.label}
+                    </h3>
+                    <div className="overflow-hidden rounded-xl border">
+                      {group.items.map((permission, index) => {
+                        const checkboxId = `role-${selectedRole?.id}-permission-${permission.id}`;
+                        const checked = draftPermissionIds.has(permission.id);
+                        return (
+                          <div key={permission.id} className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/50 ${index > 0 ? "border-t" : ""}`}>
+                            <Checkbox id={checkboxId} checked={checked} onCheckedChange={(nextChecked) => handleDraftPermissionChange(permission.id, nextChecked)} disabled={isRolePermissionsSaving} className="mt-0.5" />
+                            <Label htmlFor={checkboxId} className="min-w-0 flex-1 cursor-pointer items-start">
+                              <span className="min-w-0">
+                                <span className="block font-medium leading-4">{getPermissionDisplayName(permission.name)}</span>
+                                <span className="mt-1 block text-sm leading-relaxed font-normal text-muted-foreground">{permission.description || "Без описания"}</span>
+                              </span>
+                            </Label>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </section>
+                ))}
               </div>
             )}
           </ScrollFade>
@@ -834,66 +805,6 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={isPermissionDialogOpen}
-        onOpenChange={setIsPermissionDialogOpen}
-      >
-        <DialogContent>
-          <form onSubmit={handleCreatePermission} className="contents">
-            <DialogHeader>
-              <DialogTitle>Новое право доступа</DialogTitle>
-              <DialogDescription>
-                Используйте стабильное техническое имя без пробелов.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="new-permission-name">Техническое имя</Label>
-                <Input
-                  id="new-permission-name"
-                  autoFocus
-                  required
-                  value={permissionName}
-                  onChange={(event) => setPermissionName(event.target.value)}
-                  placeholder="Введите техническое имя"
-                  disabled={isPermissionSaving}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="new-permission-description">Описание</Label>
-                <Textarea
-                  id="new-permission-description"
-                  value={permissionDescription}
-                  onChange={(event) =>
-                    setPermissionDescription(event.target.value)
-                  }
-                  placeholder="Просмотр форм"
-                  disabled={isPermissionSaving}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsPermissionDialogOpen(false)}
-                disabled={isPermissionSaving}
-              >
-                Отмена
-              </Button>
-              <Button
-                type="submit"
-                disabled={isPermissionSaving || !permissionName.trim()}
-              >
-                {isPermissionSaving && (
-                  <LoaderCircle className="animate-spin" />
-                )}
-                Создать право
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

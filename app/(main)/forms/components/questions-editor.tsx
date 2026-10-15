@@ -426,6 +426,21 @@ export function QuestionsEditor({
     void persistQuestionOrder(next);
   };
 
+  const moveOption = (
+    questionId: string,
+    optionId: string,
+    offset: -1 | 1,
+  ) => {
+    const options = optionsFor(questionId);
+    const from = options.findIndex((option) => option.id === optionId);
+    const to = from + offset;
+    if (!editable || from < 0 || to < 0 || to >= options.length || busy) return;
+    const next = [...options];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    void persistOptionOrder(questionId, next);
+  };
+
   const dropQuestion = () => {
     if (!draggingQuestionId || !questionDropTarget || busy) return;
     const next = moveItem(
@@ -461,7 +476,7 @@ export function QuestionsEditor({
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 pb-16">
-      <section className="rounded-2xl border bg-card p-6 text-card-foreground shadow-sm">
+      <section className="rounded-2xl border bg-card p-6 text-card-foreground">
         {metadataEditing ? (
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void saveMetadata(); }}>
             <div className="flex items-center justify-between gap-3">
@@ -637,10 +652,10 @@ export function QuestionsEditor({
                 <article
                   className={
                     draggingQuestionId === question.id
-                      ? "rounded-2xl border bg-card text-card-foreground opacity-40 shadow-sm"
+                      ? "rounded-2xl border bg-card text-card-foreground opacity-40"
                       : isEditing
-                        ? "rounded-2xl border-2 border-primary bg-card text-card-foreground shadow-md"
-                        : "rounded-2xl border bg-card text-card-foreground shadow-sm transition-shadow hover:shadow-md"
+                        ? "rounded-2xl border-2 border-primary bg-primary/[0.035] text-card-foreground"
+                        : "rounded-2xl border bg-card text-card-foreground transition-colors hover:border-primary/35 hover:bg-muted/25"
                   }
                 >
                   {isEditing ? (
@@ -734,6 +749,9 @@ export function QuestionsEditor({
                       onOptionDragStart={(option) =>
                         setDraggingOption({ questionId: question.id, id: option.id })
                       }
+                      onOptionMove={(option, offset) =>
+                        moveOption(question.id, option.id, offset)
+                      }
                       onOptionDragEnd={() => {
                         setDraggingOption(null);
                         setOptionDropTarget(null);
@@ -766,7 +784,7 @@ export function QuestionsEditor({
 
           {questionForm === "new" && (
             <div className="sm:pl-9">
-              <article className="rounded-2xl border-2 border-primary bg-card text-card-foreground shadow-md">
+              <article className="rounded-2xl border-2 border-primary bg-primary/[0.035] text-card-foreground">
                 <QuestionSettings
                   text={questionText}
                   type={questionType}
@@ -938,6 +956,7 @@ type QuestionAnswerProps = {
   onOptionCancel: () => void;
   onOptionSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   onOptionDragStart: (option: ChecklistOption) => void;
+  onOptionMove: (option: ChecklistOption, offset: -1 | 1) => void;
   onOptionDragEnd: () => void;
   onOptionDragOver: (
     event: React.DragEvent<HTMLDivElement>,
@@ -1004,8 +1023,19 @@ function QuestionAnswer(props: QuestionAnswerProps) {
                       draggable={!props.busy}
                       className="cursor-grab rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100 focus:opacity-100 active:cursor-grabbing"
                       aria-label={`Переместить вариант ${option.label}`}
+                      title="Потяните, чтобы изменить порядок. Стрелки ↑ ↓ работают с клавиатуры."
                       onDragStart={() => props.onOptionDragStart(option)}
                       onDragEnd={props.onOptionDragEnd}
+                      onKeyDown={(event) => {
+                        if (event.key === "ArrowUp") {
+                          event.preventDefault();
+                          props.onOptionMove(option, -1);
+                        }
+                        if (event.key === "ArrowDown") {
+                          event.preventDefault();
+                          props.onOptionMove(option, 1);
+                        }
+                      }}
                     >
                       <GripVertical className="size-4" />
                     </button>

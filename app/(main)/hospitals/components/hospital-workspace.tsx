@@ -87,7 +87,7 @@ export function HospitalWorkspace({ hospitalId, initialSection }: { hospitalId: 
               render={
                 <button
                   type="button"
-                  className="flex size-8 items-center justify-center rounded-md border border-input bg-background text-foreground shadow-xs transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex size-8 items-center justify-center rounded-md border border-input bg-background text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label="Информация о центре"
                 />
               }

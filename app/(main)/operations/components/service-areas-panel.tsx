@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
-import { LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -65,8 +65,8 @@ export function ServiceAreasPanel({
 
   return (
     <section className="flex min-h-full flex-col overflow-hidden rounded-xl border bg-background xl:h-full xl:min-h-0">
-      <header className="flex items-center justify-between border-b p-4">
-        <div>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
+        <div className="min-w-0">
           <h2 className="font-semibold">Зоны обслуживания</h2>
           <p className="text-sm text-muted-foreground">
             Наведите на строку, чтобы выделить территорию на карте
@@ -78,16 +78,24 @@ export function ServiceAreasPanel({
         </Button>
       </header>
 
-      <div className="grid min-h-96 flex-1 xl:min-h-0 xl:grid-cols-[minmax(480px,0.9fr)_minmax(360px,1.1fr)]">
-        <div className="min-w-0 overflow-auto border-b xl:min-h-0 xl:border-b-0 xl:border-r">
+      <div className="grid min-h-96 min-w-0 flex-1 xl:min-h-0 xl:grid-cols-[minmax(0,0.9fr)_minmax(320px,1.1fr)]">
+        <div className="min-w-0 overflow-y-auto border-b xl:min-h-0 xl:border-b-0 xl:border-r">
           {areas.length > 0 ? (
-            <Table>
+            <Table className="table-fixed">
+              <colgroup>
+                <col />
+                <col className="w-24" />
+                <col className="w-24" />
+                <col className="w-20" />
+              </colgroup>
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead>Название</TableHead>
-                  <TableHead>Приоритет</TableHead>
+                  <TableHead className="px-2 text-center">Приоритет</TableHead>
                   <TableHead>Статус</TableHead>
-                  <TableHead className="w-32" />
+                  <TableHead className="px-2">
+                    <span className="sr-only">Действия</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -102,25 +110,34 @@ export function ServiceAreasPanel({
                     onFocusCapture={() => setHighlightedAreaId(area.id)}
                     onBlurCapture={() => setHighlightedAreaId(null)}
                   >
-                    <TableCell className="font-medium">{area.name}</TableCell>
-                    <TableCell>{area.priority}</TableCell>
-                    <TableCell>
+                    <TableCell className="min-w-0 font-medium">
+                      <span className="block truncate" title={area.name}>
+                        {area.name}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-2 text-center tabular-nums">
+                      {area.priority}
+                    </TableCell>
+                    <TableCell className="overflow-hidden text-ellipsis px-2">
                       {area.active ? "Активна" : "Отключена"}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
+                    <TableCell className="px-2">
+                      <div className="flex justify-end gap-1">
                         <Button
-                          size="sm"
+                          size="icon-sm"
                           variant="ghost"
+                          aria-label={`Изменить зону ${area.name}`}
+                          title="Изменить"
                           onClick={() => onEdit(area)}
                           disabled={busy}
                         >
-                          Изменить
+                          <Pencil />
                         </Button>
                         <Button
                           size="icon-sm"
                           variant="ghost"
                           aria-label={`Удалить зону ${area.name}`}
+                          title="Удалить"
                           onClick={() => onRemove(area)}
                           disabled={busy}
                         >

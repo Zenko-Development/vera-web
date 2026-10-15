@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { Toolbar } from "@/components/ui/toolbar";
 import { hospitalArrivalApi } from "@/entities/hospital-arrival/api/hospital-arrival.api";
 import type { HospitalArrival } from "@/entities/hospital-arrival/model/types";
 import { fleetLiveApi } from "@/entities/fleet-live/api/fleet-live.api";
@@ -121,11 +122,11 @@ export function LiveMapWorkspace() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 pb-5 pt-3">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 text-card-foreground">
+      <Toolbar>
         {canSeeHospitals && <Button
           type="button"
           size="sm"
-          variant={showHospitals ? "default" : "ghost"}
+          variant={showHospitals ? "secondary" : "ghost"}
           onClick={() => setShowHospitals((value) => !value)}
           aria-pressed={showHospitals}
         >
@@ -136,7 +137,7 @@ export function LiveMapWorkspace() {
         {(canSeeFleet || canSeeArrivals) && <Button
           type="button"
           size="sm"
-          variant={showVehicles ? "default" : "ghost"}
+          variant={showVehicles ? "secondary" : "ghost"}
           onClick={() => setShowVehicles((value) => !value)}
           aria-pressed={showVehicles}
         >
@@ -166,7 +167,7 @@ export function LiveMapWorkspace() {
             <RefreshCw className={refreshing ? "animate-spin" : ""} />
           </Button>
         </div>
-      </div>
+      </Toolbar>
 
       <div className={cn(
         "grid min-h-0 flex-1 overflow-hidden rounded-xl border bg-card text-card-foreground",

@@ -33,7 +33,7 @@ export function HospitalsGrid({
           type="button"
           key={hospital.id}
           onClick={() => onOpen(hospital)}
-          className="group relative flex min-h-44 flex-col justify-between rounded-xl bg-card p-4 text-left text-card-foreground ring-1 ring-border transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="group relative flex min-h-44 flex-col justify-between rounded-xl bg-card p-4 text-left text-card-foreground ring-1 ring-border transition-[background-color,box-shadow] duration-200 hover:bg-muted/35 hover:ring-primary/35 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

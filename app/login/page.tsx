@@ -16,9 +16,7 @@ import { AuthGuard } from "@/features/components/AuthGuard";
 import { ThemeToggle } from "@/features/theme/theme-toggle";
 import Logo from "@/shared/assets/icons/logo.svg";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useState, FormEvent } from "react";
-import { X } from "lucide-react";
 
 export default function Login() {
   const showAlert = useAlert();
@@ -82,15 +80,7 @@ export default function Login() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <div className="flex items-center">
-                      <Label htmlFor="password">Пароль</Label>
-                      <a
-                        href="#"
-                        className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                      >
-                        Забыли пароль?
-                      </a>
-                    </div>
+                    <Label htmlFor="password">Пароль</Label>
                     <Input
                       id="password"
                       type="password"
@@ -100,6 +90,9 @@ export default function Login() {
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={loading}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Для сброса пароля обратитесь к администратору системы.
+                    </p>
                   </div>
                 </div>
                 <Button
@@ -144,7 +137,7 @@ export default function Login() {
               alt=""
               width={1859}
               height={1428}
-              className="absolute bottom-0 drop-shadow-lg left-1/2 -translate-x-1/2 transition duration-320 ease-[cubic-bezier(0.75,0,0,1)] "
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 transition duration-320 ease-[cubic-bezier(0.75,0,0,1)] "
             />
             <Button onClick={() => setBannerVisible(false)} variant="ghost" className="absolute right-0 top-0"><X/></Button>
           </div>

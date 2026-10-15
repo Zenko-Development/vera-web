@@ -4,11 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, LoaderCircle, Plus, RefreshCw, Search, Settings2, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FilterPopover } from "@/components/ui/filter-popover";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Toolbar } from "@/components/ui/toolbar";
 import type { Checklist } from "@/entities/checklist/model/types";
 import { useAlert } from "@/features/alert/alert-store";
 import { usePermissions } from "@/features/auth/use-permissions";
@@ -106,12 +109,17 @@ export function FormsManagement() {
   };
 
   return <div className="flex min-h-0 flex-1 flex-col gap-3 pt-3">
-    <Card size="sm"><CardContent className="flex flex-row flex-wrap items-center gap-2">
-      <InputGroup className="min-w-64 flex-1 shadow-none"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по названию, описанию или заболеванию" aria-label="Поиск форм" /></InputGroup>
-      <Select value={sicknessFilter} onValueChange={(value) => setSicknessFilter(value ?? "all")}><SelectTrigger className="w-52 bg-background shadow-none" size="sm" aria-label="Фильтр по заболеванию"><SelectValue /></SelectTrigger><SelectContent align="start"><SelectGroup><SelectLabel>Заболевание</SelectLabel><SelectItem value="all">Все заболевания</SelectItem>{sicknesses.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectGroup></SelectContent></Select>
-      <Button type="button" variant="outline" size="sm" onClick={() => void handleRefresh()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} /> Обновить</Button>
+    <Toolbar>
+      <InputGroup className="min-w-0 flex-1 basis-64 shadow-none"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти форму" aria-label="Поиск форм" /></InputGroup>
+      <FilterPopover activeCount={sicknessFilter === "all" ? 0 : 1} onClear={() => setSicknessFilter("all")}>
+        <div className="grid gap-2">
+          <Label htmlFor="forms-sickness-filter">Заболевание</Label>
+          <Select value={sicknessFilter} onValueChange={(value) => setSicknessFilter(value ?? "all")}><SelectTrigger id="forms-sickness-filter" className="w-full bg-background shadow-none" aria-label="Фильтр по заболеванию"><SelectValue /></SelectTrigger><SelectContent align="start"><SelectGroup><SelectLabel>Заболевание</SelectLabel><SelectItem value="all">Все заболевания</SelectItem>{sicknesses.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectGroup></SelectContent></Select>
+        </div>
+      </FilterPopover>
+      <Button type="button" variant="outline" size="icon-sm" aria-label="Обновить формы" onClick={() => void handleRefresh()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} /></Button>
       {canCreate && <Button type="button" size="sm" onClick={openCreateDialog}><Plus /> Создать форму</Button>}
-    </CardContent></Card>
+    </Toolbar>
 
     {error && !loading && <Alert variant="destructive"><AlertTitle>Не удалось загрузить формы</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 

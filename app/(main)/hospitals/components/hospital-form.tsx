@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LoaderCircle, X } from "lucide-react";
+import { CircleCheck, LoaderCircle, MapPin, Search, X } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,6 +15,11 @@ import {
 } from "@/components/ui/drawer";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -161,6 +166,7 @@ function HospitalFormFields({
   const [errors, setErrors] = useState<Partial<Record<FormField, string>>>({});
   const [selectedSicknessIds, setSelectedSicknessIds] = useState<string[]>([]);
   const [savedSicknessIds, setSavedSicknessIds] = useState<string[]>([]);
+  const [sicknessQuery, setSicknessQuery] = useState("");
   const [isLoadingSicknesses, setIsLoadingSicknesses] = useState(target !== "new");
   const [isSaving, setIsSaving] = useState(false);
   const isEditing = target !== "new";
@@ -209,6 +215,13 @@ function HospitalFormFields({
   };
 
   const initialForm = useMemo(() => getInitialForm(target), [target]);
+  const visibleSicknesses = useMemo(() => {
+    const query = sicknessQuery.trim().toLocaleLowerCase("ru-RU");
+    if (!query) return sicknesses;
+    return sicknesses.filter((sickness) =>
+      `${sickness.name} ${sickness.description}`.toLocaleLowerCase("ru-RU").includes(query),
+    );
+  }, [sicknessQuery, sicknesses]);
   const hasChanges = useMemo(() => {
     const formChanged = (Object.keys(form) as FormField[]).some(
       (field) => form[field] !== initialForm[field],
@@ -225,12 +238,8 @@ function HospitalFormFields({
 
     if (!form.name.trim()) nextErrors.name = "Укажите название центра";
     if (!form.address.trim()) nextErrors.address = "Укажите адрес";
+    else if (!latitude || !longitude) nextErrors.address = "Выберите подходящий адрес из списка, чтобы определить точку на карте";
     if (!form.facilityTypeId) nextErrors.facilityTypeId = "Выберите тип учреждения";
-    if ((latitude && !longitude) || (!latitude && longitude)) {
-      nextErrors.latitude = "Укажите обе координаты";
-      nextErrors.longitude = "Укажите обе координаты";
-    }
-
     const latitudeNumber = Number(latitude);
     const longitudeNumber = Number(longitude);
     if (latitude && (!Number.isFinite(latitudeNumber) || latitudeNumber < -90 || latitudeNumber > 90)) {
@@ -241,6 +250,19 @@ function HospitalFormFields({
     }
 
     setErrors(nextErrors);
+    const firstInvalidField = (Object.keys(nextErrors) as FormField[])[0];
+    if (firstInvalidField) {
+      const fieldIds: Record<FormField, string> = {
+        name: "hospital-name",
+        description: "hospital-description",
+        facilityTypeId: "hospital-facility-type",
+        address: "hospital-address",
+        phone: "hospital-phone",
+        latitude: "hospital-address",
+        longitude: "hospital-address",
+      };
+      requestAnimationFrame(() => document.getElementById(fieldIds[firstInvalidField])?.focus());
+    }
     return Object.keys(nextErrors).length === 0;
   };
 
@@ -381,18 +403,29 @@ function HospitalFormFields({
               </div>
             </FormSection>
 
-            <FormSection number="2" title="Контакты и местоположение" description="Адрес для бригады и координаты для маршрутизации">
+            <FormSection number="2" title="Контакты и местоположение" description="Выберите найденный адрес — координаты определятся автоматически">
               <AddressSearch
                 value={form.address}
                 error={errors.address}
-                onChange={(value) => setField("address", value)}
+                onChange={(value) => {
+                  setForm((current) => ({ ...current, address: value, latitude: "", longitude: "" }));
+                  setErrors((current) => ({ ...current, address: undefined, latitude: undefined, longitude: undefined }));
+                }}
                 onSelect={(result) => {
-                  setField("address", result.label);
-                  setField("latitude", String(result.latitude));
-                  setField("longitude", String(result.longitude));
+                  setForm((current) => ({
+                    ...current,
+                    address: result.label,
+                    latitude: String(result.latitude),
+                    longitude: String(result.longitude),
+                  }));
+                  setErrors((current) => ({ ...current, address: undefined, latitude: undefined, longitude: undefined }));
                 }}
                 disabled={disabled}
               />
+              <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${form.latitude && form.longitude ? "border-emerald-500/25 bg-emerald-500/8 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}>
+                {form.latitude && form.longitude ? <CircleCheck className="size-4 shrink-0" /> : <MapPin className="size-4 shrink-0" />}
+                {form.latitude && form.longitude ? "Адрес выбран, точка на карте определена" : "Найдите и выберите адрес из списка результатов"}
+              </div>
               <FormInput
                 id="hospital-phone"
                 label="Телефон"
@@ -403,41 +436,21 @@ function HospitalFormFields({
                 disabled={disabled}
                 placeholder="+7 900 000-00-00"
               />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormInput
-                  id="hospital-latitude"
-                  label="Широта"
-                  type="number"
-                  value={form.latitude}
-                  error={errors.latitude}
-                  onChange={(value) => setField("latitude", value)}
-                  disabled={disabled}
-                  min={-90}
-                  max={90}
-                  step="any"
-                  placeholder="55.7558"
-                />
-                <FormInput
-                  id="hospital-longitude"
-                  label="Долгота"
-                  type="number"
-                  value={form.longitude}
-                  error={errors.longitude}
-                  onChange={(value) => setField("longitude", value)}
-                  disabled={disabled}
-                  min={-180}
-                  max={180}
-                  step="any"
-                  placeholder="37.6173"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Координаты необязательны, но нужны для расчёта расстояния и времени прибытия. Если указываете одну координату, укажите и вторую.</p>
             </FormSection>
 
             <FormSection number="3" title="Принимаемые направления" description="По каким заболеваниям центр доступен для выбора">
               <p className="-mt-2 text-sm text-muted-foreground">
                 Выберите заболевания, по которым бригада может направить пациента в этот центр.
               </p>
+              {sicknesses.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <InputGroup className="min-w-56 flex-1">
+                    <InputGroupAddon><Search /></InputGroupAddon>
+                    <InputGroupInput value={sicknessQuery} onChange={(event) => setSicknessQuery(event.target.value)} placeholder="Найти заболевание" aria-label="Поиск заболеваний" />
+                  </InputGroup>
+                  <span className="text-xs text-muted-foreground">Выбрано: {selectedSicknessIds.length}</span>
+                </div>
+              )}
               {isLoadingSicknesses ? (
                 <div className="flex items-center gap-2 rounded-xl border p-4 text-sm text-muted-foreground">
                   <LoaderCircle className="size-4 animate-spin" /> Загружаем направления…
@@ -446,9 +459,11 @@ function HospitalFormFields({
                 <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
                   Заболевания пока не созданы. Добавьте их в разделе «Настройки → Справочники».
                 </div>
+              ) : visibleSicknesses.length === 0 ? (
+                <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">По вашему запросу ничего не найдено.</div>
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {sicknesses.map((sickness) => {
+                  {visibleSicknesses.map((sickness) => {
                     const checked = selectedSicknessIds.includes(sickness.id);
                     return (
                       <Label

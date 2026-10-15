@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,10 @@ import type { Role } from "@/entities/role/model/types";
 import { getRoleDisplayName } from "@/entities/role/lib/role-presenters";
 import type { CreateUserRequest, User } from "@/entities/user/model/types";
 import { useAlert } from "@/features/alert/alert-store";
+import {
+  useUnsavedChanges,
+  useUnsavedNavigation,
+} from "@/features/unsaved-changes/unsaved-changes-provider";
 import { getUsersErrorMessage } from "../hooks/use-users";
 import Link from "next/link";
 
@@ -71,6 +75,11 @@ export function UserForm({
     {},
   );
   const [isSaving, setIsSaving] = useState(false);
+  const { requestNavigation } = useUnsavedNavigation();
+  const hasChanges = useMemo(
+    () => (Object.keys(form) as Array<keyof FormState>).some((field) => form[field] !== emptyForm[field]),
+    [form],
+  );
 
   const setField = <K extends keyof FormState>(
     field: K,
@@ -85,10 +94,10 @@ export function UserForm({
     setErrors({});
   };
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && isSaving) return;
-    if (!nextOpen) resetForm();
-    onOpenChange(nextOpen);
+  const requestClose = () => {
+    if (isSaving) return;
+    if (hasChanges) requestNavigation(() => onOpenChange(false));
+    else onOpenChange(false);
   };
 
   const validate = () => {
@@ -106,12 +115,15 @@ export function UserForm({
     }
 
     setErrors(nextErrors);
+    const firstInvalidField = (Object.keys(nextErrors) as Array<keyof FormState>)[0];
+    if (firstInvalidField) {
+      requestAnimationFrame(() => document.getElementById(firstInvalidField === "roleId" ? "role" : firstInvalidField)?.focus());
+    }
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!validate()) return;
+  const createUser = async (): Promise<boolean> => {
+    if (!validate()) return false;
 
     setIsSaving(true);
     try {
@@ -130,24 +142,37 @@ export function UserForm({
         description: `${user.name_last} ${user.name_first} добавлен в систему.`,
         type: "success",
       });
-      resetForm();
       onOpenChange(false);
+      return true;
     } catch (error) {
       showAlert({
         title: "Не удалось создать пользователя",
         description: getUsersErrorMessage(error),
         type: "error",
       });
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
 
+  useUnsavedChanges({
+    active: open && hasChanges,
+    onSave: createUser,
+    onDiscard: resetForm,
+  });
+
   return (
     <Drawer
       swipeDirection="right"
       open={open}
-      onOpenChange={handleOpenChange}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) onOpenChange(true);
+        else requestClose();
+      }}
+      onOpenChangeComplete={(nextOpen) => {
+        if (!nextOpen) resetForm();
+      }}
     >
       <DrawerContent className="m-3 w-full max-w-lg">
         <DrawerHeader className="flex-row items-start justify-between border-b pb-4">
@@ -161,7 +186,7 @@ export function UserForm({
             type="button"
             variant="ghost"
             size="icon-sm"
-            onClick={() => handleOpenChange(false)}
+            onClick={requestClose}
             disabled={isSaving}
           >
             <X />
@@ -170,7 +195,10 @@ export function UserForm({
         </DrawerHeader>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void createUser();
+          }}
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <div className="min-h-0 flex-1 space-y-7 overflow-y-auto p-4">
@@ -297,7 +325,7 @@ export function UserForm({
             <Button
               type="button"
               variant="outline"
-              onClick={() => handleOpenChange(false)}
+              onClick={requestClose}
               disabled={isSaving}
             >
               Отмена

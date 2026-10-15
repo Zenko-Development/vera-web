@@ -32,11 +32,11 @@ import {
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/features/auth/useAuth";
 import {
-  checklistPermissions,
+  checklistPagePermissions,
   dashboardPermissions,
   fleetPermissions,
   getDefaultAppPath,
-  hospitalPermissions,
+  hospitalPagePermissions,
   mapPermissions,
   settingsPermissions,
 } from "@/features/auth/access-control";
@@ -54,9 +54,9 @@ type MenuItem = {
 const primaryItems: MenuItem[] = [
   { href: "/", label: "Главная", icon: LayoutDashboard, permissions: [...dashboardPermissions] },
   { href: "/users", label: "Пользователи", icon: UsersRound, permissions: ["user.manage"] },
-  { href: "/hospitals", label: "Сосудистые центры", icon: Hospital, permissions: [...hospitalPermissions] },
+  { href: "/hospitals", label: "Сосудистые центры", icon: Hospital, permissions: [...hospitalPagePermissions] },
   { href: "/map", label: "Карта", icon: MapPinned, permissions: [...mapPermissions] },
-  { href: "/forms", label: "Формы", icon: ListTodo, permissions: [...checklistPermissions] },
+  { href: "/forms", label: "Формы", icon: ListTodo, permissions: [...checklistPagePermissions] },
   { href: "/fleet", label: "Машины и планшеты", icon: Ambulance, permissions: [...fleetPermissions] },
   { href: "/analytics", label: "История действий", icon: RotateCcwClock, permissions: ["analytics.read"] },
 ];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Ambulance, CalendarDays, LayoutDashboard, Map, Plus, Search, Trash2, UsersRound, Wrench } from "lucide-react";
+import { Ambulance, CalendarDays, LayoutDashboard, LoaderCircle, Map, Plus, Search, Trash2, UsersRound, Wrench } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -39,6 +39,10 @@ import { ServiceAreasPanel } from "./service-areas-panel";
 export type HospitalOperationsSection = "overview" | "resources" | "schedule" | "staff" | "areas" | "arrivals";
 type Section = HospitalOperationsSection;
 type ResourceTarget = { kind: "equipment" | "operating" } | null;
+type DeleteTarget =
+  | { kind: "resource"; resourceKind: "equipment" | "operating"; id: string; label: string }
+  | { kind: "staff"; id: string; label: string }
+  | { kind: "area"; area: HospitalServiceArea; label: string };
 
 const equipmentStatusNames: Record<HospitalEquipmentStatus, string> = {
   available: "Доступен",
@@ -69,7 +73,7 @@ function getUserLabel(user: User): string {
   );
 }
 
-export function HospitalOperations({ fixedHospitalId, initialSection = "overview" }: { fixedHospitalId?: string; initialSection?: HospitalOperationsSection }) {
+export function HospitalOperations({ fixedHospitalId, initialSection = "arrivals" }: { fixedHospitalId?: string; initialSection?: HospitalOperationsSection }) {
   const showAlert = useAlert();
   const { can, canAny } = usePermissions();
   const [section, setSection] = useState<Section>(initialSection);
@@ -91,25 +95,28 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
   const [resourceLabel, setResourceLabel] = useState("");
   const [staffUserId, setStaffUserId] = useState("");
   const [areaTarget, setAreaTarget] = useState<HospitalServiceArea | "new" | null>(null);
+  const [areaDialogMounted, setAreaDialogMounted] = useState(false);
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const canReadResources = can("hospital_resource.read");
   const canManageResources = can("hospital_resource.manage");
   const canChangeResourceStatus = canAny(["hospital_resource.manage", "hospital_resource.change_status"]);
   const canManageSchedule = canAny(["hospital_resource.manage", "hospital_resource.change_status"]);
   const canManageStaff = can("hospital_staff.manage");
   const canReadUsers = can("user.manage");
+  const canManageStaffDirectory = canManageStaff && canReadUsers;
   const canManageAreas = can("hospital_service_area.manage");
   const canReadArrivals = can("hospital_arrival.read");
   const availableSections = useMemo(() => {
     const sections: Section[] = [];
-    if (canReadArrivals || canReadResources) sections.push("overview");
     if (canReadArrivals) sections.push("arrivals");
+    if (canReadArrivals || canReadResources) sections.push("overview");
     if (canReadResources && canManageSchedule) sections.push("schedule");
     if (canReadResources) sections.push("resources");
-    if (canManageStaff) sections.push("staff");
+    if (canManageStaffDirectory) sections.push("staff");
     if (canManageAreas) sections.push("areas");
     return sections;
-  }, [canManageAreas, canManageSchedule, canManageStaff, canReadArrivals, canReadResources]);
+  }, [canManageAreas, canManageSchedule, canManageStaffDirectory, canReadArrivals, canReadResources]);
   const activeSection = availableSections.includes(section) ? section : availableSections[0];
 
   const hospitalId = fixedHospitalId ?? selectedHospitalId;
@@ -126,7 +133,7 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
         canReadResources ? equipmentApi.list() : Promise.resolve([]),
         canReadResources ? operatingTypeApi.list() : Promise.resolve([]),
         canManageAreas ? hospitalServiceAreaApi.list() : Promise.resolve([]),
-        canManageStaff && canReadUsers ? userApi.list() : Promise.resolve([]),
+        canManageStaffDirectory ? userApi.list() : Promise.resolve([]),
       ]);
       setHospitals(nextHospitals);
       setEquipmentTypes(nextEquipment);
@@ -138,7 +145,7 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
     } catch (cause) {
       setError(message(cause));
     } finally { setLoading(false); }
-  }, [canManageAreas, canManageStaff, canReadResources, canReadUsers, fixedHospitalId]);
+  }, [canManageAreas, canManageStaffDirectory, canReadResources, fixedHospitalId]);
 
   const loadHospital = useCallback(async (id: string) => {
     if (!id) return;
@@ -147,7 +154,7 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
       const [nextEquipment, nextRooms, nextStaff] = await Promise.all([
         canReadResources ? hospitalEquipmentApi.list(id) : Promise.resolve([]),
         canReadResources ? hospitalOperatingRoomApi.list(id) : Promise.resolve([]),
-        canManageStaff ? hospitalStaffApi.listUserIds(id) : Promise.resolve({ ids: [] }),
+        canManageStaffDirectory ? hospitalStaffApi.listUserIds(id) : Promise.resolve({ ids: [] }),
       ]);
       setEquipment(nextEquipment);
       setRooms(nextRooms);
@@ -155,7 +162,7 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
       setError(null);
     } catch (cause) { setError(message(cause)); }
     finally { setLoading(false); }
-  }, [canManageStaff, canReadResources]);
+  }, [canManageStaffDirectory, canReadResources]);
 
   const loadArrivals = useCallback(async () => {
     try { setArrivals(await hospitalArrivalApi.list()); setError(null); }
@@ -166,6 +173,15 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
     const timer = window.setTimeout(() => void loadBase(), 0);
     return () => window.clearTimeout(timer);
   }, [loadBase]);
+  useEffect(() => {
+    if (!areaDialogMounted) return;
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      setAreaDialogOpen(true);
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [areaDialogMounted]);
   useEffect(() => {
     const timer = window.setTimeout(() => void loadHospital(hospitalId), 0);
     return () => window.clearTimeout(timer);
@@ -227,7 +243,8 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
       if (kind === "equipment") { await hospitalEquipmentApi.delete(id); setEquipment((current) => current.filter((item) => item.id !== id)); }
       else { await hospitalOperatingRoomApi.delete(id); setRooms((current) => current.filter((item) => item.id !== id)); }
       showAlert({ title: "Ресурс удалён", description: label, type: "success" });
-    } catch (cause) { showAlert({ title: "Не удалось удалить ресурс", description: message(cause), type: "error" }); }
+      return true;
+    } catch (cause) { showAlert({ title: "Не удалось удалить ресурс", description: message(cause), type: "error" }); return false; }
     finally { setBusy(false); }
   };
 
@@ -239,21 +256,48 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
     finally { setBusy(false); }
   };
   const revokeStaff = async (userId: string) => {
-    setBusy(true); try { await hospitalStaffApi.revoke(userId, hospitalId); setStaffIds((current) => current.filter((id) => id !== userId)); showAlert({ title: "Назначение удалено", description: userNames[userId] ?? userId, type: "success" }); }
-    catch (cause) { showAlert({ title: "Не удалось удалить назначение", description: message(cause), type: "error" }); }
+    setBusy(true); try { await hospitalStaffApi.revoke(userId, hospitalId); setStaffIds((current) => current.filter((id) => id !== userId)); showAlert({ title: "Назначение удалено", description: userNames[userId] ?? userId, type: "success" }); return true; }
+    catch (cause) { showAlert({ title: "Не удалось удалить назначение", description: message(cause), type: "error" }); return false; }
     finally { setBusy(false); }
   };
 
-  const openArea = (target: HospitalServiceArea | "new") => {
-    setAreaTarget(target);
-    setAreaDialogOpen(true);
+  const openArea = async (target: HospitalServiceArea | "new") => {
+    if (target === "new") {
+      setAreaDialogOpen(false);
+      setAreaTarget(target);
+      setAreaDialogMounted(true);
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const currentArea = await hospitalServiceAreaApi.getById(target.id);
+      setAreaDialogOpen(false);
+      setAreaTarget(currentArea);
+      setAreaDialogMounted(true);
+    } catch (cause) {
+      showAlert({
+        title: "Не удалось открыть зону",
+        description: message(cause),
+        type: "error",
+      });
+    } finally {
+      setBusy(false);
+    }
   };
   const saveArea = async (body: HospitalServiceAreaRequest) => {
     if (!areaTarget || !hospitalId) return false;
     const isCreating = areaTarget === "new";
     setBusy(true);
     try {
-      const saved = isCreating ? await hospitalServiceAreaApi.create(body) : await hospitalServiceAreaApi.update(areaTarget.id, body);
+      const saved = isCreating
+        ? await hospitalServiceAreaApi.create(body)
+        : await hospitalServiceAreaApi.update(areaTarget.id, {
+            name: body.name,
+            boundary: body.boundary,
+            priority: body.priority,
+            active: body.active,
+          });
       setAreas((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
       setAreaDialogOpen(false);
       showAlert({ title: isCreating ? "Зона создана" : "Зона обновлена", description: saved.name, type: "success" });
@@ -261,7 +305,17 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
     } catch (cause) { showAlert({ title: "Не удалось сохранить зону", description: message(cause), type: "error" }); return false; }
     finally { setBusy(false); }
   };
-  const removeArea = async (area: HospitalServiceArea) => { setBusy(true); try { await hospitalServiceAreaApi.delete(area.id); setAreas((current) => current.filter((item) => item.id !== area.id)); showAlert({ title: "Зона удалена", description: area.name, type: "success" }); } catch (cause) { showAlert({ title: "Не удалось удалить зону", description: message(cause), type: "error" }); } finally { setBusy(false); } };
+  const removeArea = async (area: HospitalServiceArea) => { setBusy(true); try { await hospitalServiceAreaApi.delete(area.id); setAreas((current) => current.filter((item) => item.id !== area.id)); showAlert({ title: "Зона удалена", description: area.name, type: "success" }); return true; } catch (cause) { showAlert({ title: "Не удалось удалить зону", description: message(cause), type: "error" }); return false; } finally { setBusy(false); } };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const removed = deleteTarget.kind === "resource"
+      ? await removeResource(deleteTarget.resourceKind, deleteTarget.id)
+      : deleteTarget.kind === "staff"
+        ? await revokeStaff(deleteTarget.id)
+        : await removeArea(deleteTarget.area);
+    if (removed) setDeleteTarget(null);
+  };
 
   const hospitalAreas = useMemo(
     () => areas.filter((item) => item.hospital_id === hospitalId),
@@ -275,14 +329,14 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
   return <div className="flex h-full min-h-0 flex-1 flex-col gap-1">
     {error && <Alert variant="destructive"><AlertTitle>Ошибка загрузки</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
     <div className="rounded-xl border bg-card p-3 text-card-foreground">
-      <div className="flex flex-wrap items-end gap-3 border-b pb-3">
+      {!fixedHospitalId && <div className="flex flex-wrap items-end gap-3 border-b pb-3">
         {!fixedHospitalId && <div className="grid gap-1.5">
           <Label htmlFor="operations-hospital">Сосудистый центр</Label>
           <Select value={hospitalId || null} onValueChange={(value) => setSelectedHospitalId(value ?? "")}><SelectTrigger id="operations-hospital" className="min-w-72"><SelectValue placeholder="Выберите центр" /></SelectTrigger><SelectContent>{hospitals.map((hospital) => <SelectItem key={hospital.id} value={hospital.id}>{hospital.name}</SelectItem>)}</SelectContent></Select>
         </div>}
         <div className="min-w-0 flex-1 pb-1"><p className="text-sm font-medium">Управление работой центра</p><p className="truncate text-xs text-muted-foreground">{selectedHospital?.address ?? "Прибытия, операции и готовность ресурсов"}</p></div>
-      </div>
-      <nav className="mt-2 flex flex-wrap gap-1" aria-label="Разделы работы центра">{([ ["overview", "Обзор", LayoutDashboard], ["arrivals", "Прибытия", Ambulance], ["schedule", "Расписание", CalendarDays], ["resources", "Ресурсы", Wrench], ["staff", "Сотрудники", UsersRound], ["areas", "Зоны", Map] ] as const).filter(([id]) => availableSections.includes(id)).map(([id, label, Icon]) => <Button key={id} size="sm" variant={activeSection === id ? "default" : "ghost"} onClick={() => setSection(id)}><Icon />{label}</Button>)}</nav>
+      </div>}
+      <nav className={fixedHospitalId ? "flex flex-wrap gap-1" : "mt-2 flex flex-wrap gap-1"} aria-label="Разделы работы центра">{([ ["arrivals", "Прибытия", Ambulance], ["overview", "Обзор", LayoutDashboard], ["schedule", "Расписание", CalendarDays], ["resources", "Ресурсы", Wrench], ["staff", "Сотрудники", UsersRound], ["areas", "Зоны", Map] ] as const).filter(([id]) => availableSections.includes(id)).map(([id, label, Icon]) => <Button key={id} size="sm" variant={activeSection === id ? "contrast" : "ghost"} aria-current={activeSection === id ? "page" : undefined} onClick={() => setSection(id)}><Icon />{label}</Button>)}</nav>
     </div>
     <div className={activeSection === "overview" || activeSection === "arrivals" || activeSection === "areas" || activeSection === "schedule"
       ? "min-h-0 flex-1 overflow-y-auto pt-1 xl:overflow-hidden [&_.bg-background]:bg-card [&_.bg-background]:text-card-foreground"
@@ -290,13 +344,22 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
       {!selectedHospital && !loading ? <Empty text="Создайте или выберите больницу." /> : !activeSection ? <Empty text="Для работы с центром у вашей роли нет дополнительных разрешений." /> : activeSection === "overview" ? <HospitalOverviewPanel hospitalName={selectedHospital?.name ?? "Сосудистый центр"} arrivals={visibleArrivals} rooms={rooms} equipment={equipment} canReadArrivals={canReadArrivals} canReadResources={canReadResources} canManageSchedule={canManageSchedule} onOpenSection={setSection} />
       : activeSection === "arrivals" ? <HospitalArrivalsPanel hospital={selectedHospital} arrivals={visibleArrivals} />
       : activeSection === "schedule" ? <OperatingSchedulePanel rooms={rooms} onRoomStatusChanged={() => loadHospital(hospitalId)} />
-      : activeSection === "resources" ? <div className="grid gap-4 xl:grid-cols-2"><ResourceTable kind="equipment" title="Оборудование" items={equipment} names={equipmentNames} busy={busy} canManage={canManageResources} canChangeStatus={canChangeResourceStatus} onAdd={() => openResource("equipment")} onStatus={(id, status) => void changeStatus("equipment", id, status)} onRemove={(id) => void removeResource("equipment", id)} /><ResourceTable kind="operating" title="Операционные" items={rooms} names={operatingNames} busy={busy} canManage={canManageResources} canChangeStatus={canChangeResourceStatus} onAdd={() => openResource("operating")} onStatus={(id, status) => void changeStatus("operating", id, status)} onRemove={(id) => void removeResource("operating", id)} /></div>
-      : activeSection === "staff" ? <section className="rounded-xl border bg-background"><header className="flex flex-wrap items-center gap-2 border-b p-4"><div className="mr-auto"><h2 className="font-semibold">Назначенные сотрудники</h2><p className="text-sm text-muted-foreground">Сотрудник может быть назначен в несколько больниц</p></div>{canReadUsers && <StaffUserSelect users={users} assignedIds={staffIds} value={staffUserId} onValueChange={setStaffUserId} disabled={busy} />}{canReadUsers && <Button size="sm" onClick={() => void assignStaff()} disabled={!staffUserId || busy}><Plus />Назначить</Button>}</header>{staffIds.length ? <Table><TableBody>{staffIds.map((id) => <TableRow key={id}><TableCell className="font-medium">{userNames[id] ?? id}</TableCell><TableCell className="w-16"><Button size="icon-sm" variant="ghost" aria-label={`Удалить назначение ${userNames[id] ?? id}`} onClick={() => void revokeStaff(id)} disabled={busy}><Trash2 /></Button></TableCell></TableRow>)}</TableBody></Table> : <Empty text="Сотрудники не назначены." />}</section>
-      : <ServiceAreasPanel areas={hospitalAreas} hospital={selectedHospital} busy={busy} onCreate={() => openArea("new")} onEdit={openArea} onRemove={(area) => void removeArea(area)} />}
+      : activeSection === "resources" ? <div className="grid gap-4 xl:grid-cols-2"><ResourceTable kind="equipment" title="Оборудование" items={equipment} names={equipmentNames} busy={busy} canManage={canManageResources} canChangeStatus={canChangeResourceStatus} onAdd={() => openResource("equipment")} onStatus={(id, status) => void changeStatus("equipment", id, status)} onRemove={(id) => setDeleteTarget({ kind: "resource", resourceKind: "equipment", id, label: equipment.find((item) => item.id === id)?.label ?? "ресурс" })} /><ResourceTable kind="operating" title="Операционные" items={rooms} names={operatingNames} busy={busy} canManage={canManageResources} canChangeStatus={canChangeResourceStatus} onAdd={() => openResource("operating")} onStatus={(id, status) => void changeStatus("operating", id, status)} onRemove={(id) => setDeleteTarget({ kind: "resource", resourceKind: "operating", id, label: rooms.find((item) => item.id === id)?.label ?? "операционная" })} /></div>
+      : activeSection === "staff" ? <section className="rounded-xl border bg-background"><header className="flex flex-wrap items-center gap-2 border-b p-4"><div className="mr-auto"><h2 className="font-semibold">Назначенные сотрудники</h2><p className="text-sm text-muted-foreground">Сотрудник может быть назначен в несколько больниц</p></div>{canReadUsers && <StaffUserSelect users={users} assignedIds={staffIds} value={staffUserId} onValueChange={setStaffUserId} disabled={busy} />}{canReadUsers && <Button size="sm" onClick={() => void assignStaff()} disabled={!staffUserId || busy}><Plus />Назначить</Button>}</header>{staffIds.length ? <Table><TableBody>{staffIds.map((id) => <TableRow key={id}><TableCell className="font-medium">{userNames[id] ?? id}</TableCell><TableCell className="w-16"><Button size="icon-sm" variant="ghost" aria-label={`Удалить назначение ${userNames[id] ?? id}`} onClick={() => setDeleteTarget({ kind: "staff", id, label: userNames[id] ?? id })} disabled={busy}><Trash2 /></Button></TableCell></TableRow>)}</TableBody></Table> : <Empty text="Сотрудники не назначены." />}</section>
+      : <ServiceAreasPanel areas={hospitalAreas} hospital={selectedHospital} busy={busy} onCreate={() => void openArea("new")} onEdit={(area) => void openArea(area)} onRemove={(area) => setDeleteTarget({ kind: "area", area, label: area.name })} />}
     </div>
 
     <Dialog open={resourceTarget !== null} onOpenChange={(open) => { if (!open && !busy) setResourceTarget(null); }}><DialogContent><form className="contents" onSubmit={saveResource}><DialogHeader><DialogTitle>Добавить физический ресурс</DialogTitle><DialogDescription>{selectedHospital?.name}</DialogDescription></DialogHeader><div className="grid gap-4"><div className="grid gap-2"><Label>Тип</Label><Select value={resourceTypeId || null} onValueChange={(value) => setResourceTypeId(value ?? "")}><SelectTrigger className="w-full"><SelectValue placeholder="Выберите тип" /></SelectTrigger><SelectContent>{(resourceTarget?.kind === "equipment" ? equipmentTypes : operatingTypes).map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select></div><div className="grid gap-2"><Label htmlFor="resource-label">Метка</Label><Input id="resource-label" value={resourceLabel} onChange={(event) => setResourceLabel(event.target.value)} placeholder="Например, КТ-01" required /></div></div><DialogFooter><Button type="button" variant="outline" onClick={() => setResourceTarget(null)}>Отмена</Button><Button type="submit" disabled={busy || !resourceTypeId || !resourceLabel.trim()}>Добавить</Button></DialogFooter></form></DialogContent></Dialog>
-    {areaTarget && (
+    <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open && !busy) setDeleteTarget(null); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{deleteTarget?.kind === "staff" ? "Снять назначение сотрудника?" : deleteTarget?.kind === "area" ? "Удалить зону обслуживания?" : "Удалить ресурс?"}</DialogTitle>
+          <DialogDescription>«{deleteTarget?.label}» будет удалено из этого сосудистого центра. Это действие нельзя отменить.</DialogDescription>
+        </DialogHeader>
+        <DialogFooter><Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={busy}>Отмена</Button><Button variant="destructive" onClick={() => void confirmDelete()} disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}Удалить</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+    {areaDialogMounted && areaTarget && (
       <ServiceAreaDialog
         key={areaTarget === "new" ? "new" : areaTarget.id}
         open={areaDialogOpen}
@@ -305,7 +368,10 @@ export function HospitalOperations({ fixedHospitalId, initialSection = "overview
         busy={busy}
         onOpenChange={setAreaDialogOpen}
         onOpenChangeComplete={(open) => {
-          if (!open) setAreaTarget(null);
+          if (!open) {
+            setAreaTarget(null);
+            setAreaDialogMounted(false);
+          }
         }}
         onSave={saveArea}
       />

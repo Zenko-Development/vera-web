@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Activity, ChevronLeft, ChevronRight, FileClock, LoaderCircle, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Toolbar } from "@/components/ui/toolbar";
 import { analyticsEmergencyCallApi } from "@/entities/analytics-emergency-call/api/analytics-emergency-call.api";
 import type { AnalyticsEmergencyCall } from "@/entities/analytics-emergency-call/model/types";
 import { auditEventApi } from "@/entities/audit-event/api/audit-event.api";
@@ -54,11 +56,13 @@ export function AnalyticsWorkspace() {
 
   const itemsLength = view === "calls" ? calls.length : events.length;
   return <div className="flex min-h-0 flex-1 flex-col gap-3 py-3">
-    <div className="flex items-center gap-2 rounded-xl border bg-card p-2 text-card-foreground">
-      <Button size="sm" variant={view === "calls" ? "default" : "ghost"} onClick={() => { setView("calls"); setOffset(0); }}><Activity />Завершённые вызовы</Button>
-      <Button size="sm" variant={view === "audit" ? "default" : "ghost"} onClick={() => { setView("audit"); setOffset(0); }}><FileClock />Журнал аудита</Button>
-      <Button className="ml-auto" size="sm" variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} />Обновить</Button>
-    </div>
+    <Toolbar>
+      <ButtonGroup aria-label="Раздел аналитики">
+        <Button size="sm" variant={view === "calls" ? "contrast" : "outline"} aria-pressed={view === "calls"} onClick={() => { setView("calls"); setOffset(0); }}><Activity />Завершённые вызовы</Button>
+        <Button size="sm" variant={view === "audit" ? "contrast" : "outline"} aria-pressed={view === "audit"} onClick={() => { setView("audit"); setOffset(0); }}><FileClock />Журнал аудита</Button>
+      </ButtonGroup>
+      <Button className="ml-auto" size="icon-sm" variant="outline" aria-label="Обновить аналитику" onClick={() => void load()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} /></Button>
+    </Toolbar>
     {error && <Alert variant="destructive"><AlertTitle>Не удалось загрузить аналитику</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
     <section className="min-h-0 flex-1 overflow-auto rounded-xl border bg-card text-card-foreground">
       {loading ? <div className="flex min-h-64 items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="animate-spin" />Загрузка…</div>

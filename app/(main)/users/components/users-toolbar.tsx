@@ -3,11 +3,13 @@
 import { Grid2X2, List, Plus, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
+import { FilterPopover } from "@/components/ui/filter-popover";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -17,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Toolbar } from "@/components/ui/toolbar";
 import type { Role } from "@/entities/role/model/types";
 import { getRoleDisplayName } from "@/entities/role/lib/role-presenters";
 
@@ -58,8 +61,95 @@ export function UsersToolbar({
   onCreate,
 }: UsersToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-1">
-      <ButtonGroup orientation="horizontal" aria-label="Вид списка">
+    <Toolbar className="mb-2">
+      <InputGroup className="order-first h-8 min-w-0 basis-full bg-background shadow-none sm:basis-64 sm:flex-1">
+        <InputGroupAddon>
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Поиск пользователей"
+          aria-label="Поиск пользователей"
+        />
+      </InputGroup>
+
+      <FilterPopover
+        activeCount={Number(roleId !== "all") + Number(accessFilter !== "all")}
+        onClear={() => {
+          onRoleChange("all");
+          onAccessFilterChange("all");
+        }}
+      >
+        <div className="grid gap-2">
+          <Label htmlFor="users-role-filter">Роль</Label>
+          <Select
+            value={roleId}
+            onValueChange={(value) => onRoleChange(value ?? "all")}
+          >
+            <SelectTrigger id="users-role-filter" className="w-full bg-background shadow-none">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+              <SelectGroup>
+                <SelectLabel>Роль</SelectLabel>
+                <SelectItem value="all">Все роли</SelectItem>
+                {roles.map((role) => (
+                  <SelectItem key={role.id} value={role.id}>
+                    {getRoleDisplayName(role.name)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="users-access-filter">Статус доступа</Label>
+          <Select
+            value={accessFilter}
+            onValueChange={(value) =>
+              onAccessFilterChange((value ?? "all") as UsersAccessFilter)
+            }
+          >
+            <SelectTrigger id="users-access-filter" className="w-full bg-background shadow-none">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+              <SelectGroup>
+                <SelectLabel>Доступ</SelectLabel>
+                <SelectItem value="all">Любой статус</SelectItem>
+                <SelectItem value="enabled">Активен</SelectItem>
+                <SelectItem value="disabled">Отключён</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid gap-2 border-t pt-4">
+          <Label htmlFor="users-sort">Сортировка</Label>
+          <Select
+            value={sort}
+            onValueChange={(value) =>
+              onSortChange((value ?? "name-asc") as UsersSort)
+            }
+          >
+            <SelectTrigger id="users-sort" className="w-full bg-background shadow-none">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+              <SelectGroup>
+                <SelectLabel>Сортировка</SelectLabel>
+                <SelectItem value="name-asc">ФИО: А–Я</SelectItem>
+                <SelectItem value="name-desc">ФИО: Я–А</SelectItem>
+                <SelectItem value="username-asc">По имени пользователя</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+      </FilterPopover>
+
+      <ButtonGroup orientation="horizontal" aria-label="Вид списка" className="ml-auto sm:ml-0">
         <Button
           type="button"
           variant={viewMode === "grid" ? "contrast" : "outline"}
@@ -81,78 +171,6 @@ export function UsersToolbar({
           <List />
         </Button>
       </ButtonGroup>
-      <InputGroup className="h-8 min-w-56 flex-1 bg-background shadow-none">
-        <InputGroupAddon>
-          <Search />
-        </InputGroupAddon>
-        <InputGroupInput
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Поиск по имени или имени пользователя"
-          aria-label="Поиск пользователей"
-        />
-      </InputGroup>
-
-      <Select
-        value={roleId}
-        onValueChange={(value) => onRoleChange(value ?? "all")}
-      >
-        <SelectTrigger className="w-44 bg-background shadow-none" size="sm">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent align="start">
-          <SelectGroup>
-            <SelectLabel>Роль</SelectLabel>
-            <SelectItem value="all">Все роли</SelectItem>
-            {roles.map((role) => (
-              <SelectItem key={role.id} value={role.id}>
-                {getRoleDisplayName(role.name)}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-
-      <Select
-        value={accessFilter}
-        onValueChange={(value) =>
-          onAccessFilterChange((value ?? "all") as UsersAccessFilter)
-        }
-      >
-        <SelectTrigger className="w-40 bg-background shadow-none" size="sm">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent align="start">
-          <SelectGroup>
-            <SelectLabel>Доступ</SelectLabel>
-            <SelectItem value="all">Любой статус</SelectItem>
-            <SelectItem value="enabled">Активен</SelectItem>
-            <SelectItem value="disabled">Отключён</SelectItem>
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-
-      <Select
-        value={sort}
-        onValueChange={(value) =>
-          onSortChange((value ?? "name-asc") as UsersSort)
-        }
-      >
-        <SelectTrigger className="w-48 bg-background shadow-none" size="sm">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent align="start">
-          <SelectGroup>
-            <SelectLabel>Сортировка</SelectLabel>
-            <SelectItem value="name-asc">ФИО: А–Я</SelectItem>
-            <SelectItem value="name-desc">ФИО: Я–А</SelectItem>
-            <SelectItem value="username-asc">По имени пользователя</SelectItem>
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-
-      
-
       <Button
         type="button"
         variant="outline"
@@ -167,6 +185,6 @@ export function UsersToolbar({
       <Button type="button" size="sm" onClick={onCreate}>
         <Plus /> Новый пользователь
       </Button>
-    </div>
+    </Toolbar>
   );
 }

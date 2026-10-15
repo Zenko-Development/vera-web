@@ -30,6 +30,10 @@ const operationStatusNames: Record<HospitalOperatingOperationStatus, string> = {
 };
 
 type OperationTarget = HospitalOperatingOperation | "new" | null;
+type StatusTarget = {
+  operation: HospitalOperatingOperation;
+  status: "in_progress" | "completed" | "cancelled";
+};
 
 function errorMessage(error: unknown): string {
   if (ApiError.isApiError(error)) return error.getMessage();
@@ -57,6 +61,7 @@ export function OperatingSchedulePanel({ rooms, onRoomStatusChanged }: { rooms: 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [target, setTarget] = useState<OperationTarget>(null);
+  const [statusTarget, setStatusTarget] = useState<StatusTarget | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [operationType, setOperationType] = useState<HospitalOperatingOperationType>("planned");
@@ -158,6 +163,7 @@ export function OperatingSchedulePanel({ rooms, onRoomStatusChanged }: { rooms: 
       const updated = await hospitalOperatingOperationApi.updateStatus(operation.id, { status });
       setOperations((current) => current.map((item) => item.id === updated.id ? updated : item));
       await onRoomStatusChanged();
+      setStatusTarget(null);
       showAlert({ title: `Операция: ${operationStatusNames[updated.status].toLocaleLowerCase("ru-RU")}`, type: "success" });
     } catch (cause) {
       showAlert({ title: "Не удалось изменить состояние операции", description: errorMessage(cause), type: "error" });
@@ -188,7 +194,7 @@ export function OperatingSchedulePanel({ rooms, onRoomStatusChanged }: { rooms: 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {loading ? <div className="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />Загрузка расписания…</div>
           : sortedOperations.length === 0 ? <div className="m-4 flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center"><CalendarDays className="mb-3 size-6 text-muted-foreground" /><p className="font-medium">Расписание пусто</p><p className="mt-1 text-sm text-muted-foreground">Добавьте первую плановую или внеплановую операцию для «{selectedRoom?.label}».</p></div>
-          : <Table><TableHeader><TableRow><TableHead>Время</TableHead><TableHead>Операция</TableHead><TableHead>Тип</TableHead><TableHead>Приоритет</TableHead><TableHead>Статус</TableHead><TableHead className="w-40" /></TableRow></TableHeader><TableBody>{sortedOperations.map((operation) => <TableRow key={operation.id}><TableCell className="whitespace-nowrap"><p className="font-medium">{formatDate(operation.starts_at)}</p><p className="text-xs text-muted-foreground">до {formatDate(operation.ends_at)}</p></TableCell><TableCell><p className="font-medium">{operation.title}</p>{operation.description && <p className="max-w-80 truncate text-xs text-muted-foreground">{operation.description}</p>}</TableCell><TableCell>{operationTypeNames[operation.operation_type]}</TableCell><TableCell>{operation.priority}</TableCell><TableCell><OperationStatus status={operation.status} /></TableCell><TableCell><div className="flex justify-end gap-1">{operation.status === "scheduled" && <><Button size="icon-sm" variant="ghost" aria-label="Изменить операцию" onClick={() => openEditor(operation)} disabled={busy}><Pencil /></Button><Button size="icon-sm" variant="ghost" aria-label="Начать операцию" onClick={() => void changeStatus(operation, "in_progress")} disabled={busy}><Play /></Button></>}{operation.status === "in_progress" && <Button size="icon-sm" variant="ghost" aria-label="Завершить операцию" onClick={() => void changeStatus(operation, "completed")} disabled={busy}><Check /></Button>}{(operation.status === "scheduled" || operation.status === "in_progress") && <Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label="Отменить операцию" onClick={() => void changeStatus(operation, "cancelled")} disabled={busy}><X /></Button>}</div></TableCell></TableRow>)}</TableBody></Table>}
+          : <Table><TableHeader><TableRow><TableHead>Время</TableHead><TableHead>Операция</TableHead><TableHead>Тип</TableHead><TableHead>Приоритет</TableHead><TableHead>Статус</TableHead><TableHead className="w-64" /></TableRow></TableHeader><TableBody>{sortedOperations.map((operation) => <TableRow key={operation.id}><TableCell className="whitespace-nowrap"><p className="font-medium">{formatDate(operation.starts_at)}</p><p className="text-xs text-muted-foreground">до {formatDate(operation.ends_at)}</p></TableCell><TableCell><p className="font-medium">{operation.title}</p>{operation.description && <p className="max-w-80 truncate text-xs text-muted-foreground">{operation.description}</p>}</TableCell><TableCell>{operationTypeNames[operation.operation_type]}</TableCell><TableCell>{operation.priority}</TableCell><TableCell><OperationStatus status={operation.status} /></TableCell><TableCell><div className="flex justify-end gap-1">{operation.status === "scheduled" && <><Button size="sm" variant="ghost" onClick={() => openEditor(operation)} disabled={busy}><Pencil />Изменить</Button><Button size="sm" variant="outline" onClick={() => setStatusTarget({ operation, status: "in_progress" })} disabled={busy}><Play />Начать</Button></>}{operation.status === "in_progress" && <Button size="sm" variant="outline" onClick={() => setStatusTarget({ operation, status: "completed" })} disabled={busy}><Check />Завершить</Button>}{(operation.status === "scheduled" || operation.status === "in_progress") && <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setStatusTarget({ operation, status: "cancelled" })} disabled={busy}><X />Отменить</Button>}</div></TableCell></TableRow>)}</TableBody></Table>}
       </div>
 
       <Dialog open={target !== null} onOpenChange={(open) => { if (!open && !busy) setTarget(null); }}>
@@ -203,6 +209,27 @@ export function OperatingSchedulePanel({ rooms, onRoomStatusChanged }: { rooms: 
             </div>
             <DialogFooter><Button type="button" variant="outline" onClick={() => setTarget(null)} disabled={busy}>Отмена</Button><Button type="submit" disabled={busy || request() === null}>{busy && <LoaderCircle className="animate-spin" />}Сохранить</Button></DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={statusTarget !== null} onOpenChange={(open) => { if (!open && !busy) setStatusTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{statusTarget?.status === "in_progress" ? "Начать операцию?" : statusTarget?.status === "completed" ? "Завершить операцию?" : "Отменить операцию?"}</DialogTitle>
+            <DialogDescription>
+              {statusTarget?.status === "in_progress"
+                ? "Статус операционной изменится на «Занята»."
+                : statusTarget?.status === "completed"
+                  ? "Операция будет завершена, а операционная снова станет доступна."
+                  : "Запись будет отменена, а операционная освобождена. Это действие нельзя отменить."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusTarget(null)} disabled={busy}>Назад</Button>
+            <Button variant={statusTarget?.status === "cancelled" ? "destructive" : "default"} onClick={() => { if (statusTarget) void changeStatus(statusTarget.operation, statusTarget.status); }} disabled={busy}>
+              {busy && <LoaderCircle className="animate-spin" />}
+              {statusTarget?.status === "in_progress" ? "Начать" : statusTarget?.status === "completed" ? "Завершить" : "Отменить операцию"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </section>

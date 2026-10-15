@@ -23,15 +23,23 @@ export const fleetPermissions = [
   "ambulance_vehicle.manage",
   "device.read",
   "device.provision",
+  "device.reset_secret",
+  "device.change_status",
+  "device.delete",
 ] as const;
 
 export const hospitalPermissions = [
   "hospital.read",
+  "hospital.manage",
+  "hospital_service_area.manage",
   "hospital_arrival.read",
   "hospital_resource.read",
   "hospital_resource.change_status",
   "hospital_resource.manage",
+  "hospital_staff.manage",
 ] as const;
+/** Permissions required to open the hospital directory and hospital workspace. */
+export const hospitalPagePermissions = ["hospital.read"] as const;
 export const mapPermissions = [
   "hospital.read",
   "fleet_location.read",
@@ -39,7 +47,13 @@ export const mapPermissions = [
   "emergency_call.read",
   "emergency_call.destination.select",
 ] as const;
-export const checklistPermissions = ["checklist.read"] as const;
+export const checklistPermissions = [
+  "checklist.read",
+  "checklist.manage",
+  "checklist.publish",
+] as const;
+/** Permissions required to open the checklist directory. */
+export const checklistPagePermissions = ["checklist.read"] as const;
 
 export function hasPermission(
   permissions: readonly string[] | undefined,
@@ -65,9 +79,9 @@ export function hasAllPermissions(
 export function getDefaultAppPath(permissions: readonly string[] | undefined): string {
   if (hasAnyPermission(permissions, dashboardPermissions)) return "/";
   if (hasPermission(permissions, "user.manage")) return "/users";
-  if (hasAnyPermission(permissions, hospitalPermissions)) return "/hospitals";
+  if (hasAnyPermission(permissions, hospitalPagePermissions)) return "/hospitals";
   if (hasAnyPermission(permissions, mapPermissions)) return "/map";
-  if (hasAnyPermission(permissions, checklistPermissions)) return "/forms";
+  if (hasAnyPermission(permissions, checklistPagePermissions)) return "/forms";
   if (hasAnyPermission(permissions, fleetPermissions)) return "/fleet";
   if (hasPermission(permissions, "analytics.read")) return "/analytics";
   if (hasAnyPermission(permissions, settingsPermissions)) return "/settings";
