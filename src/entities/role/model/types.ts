@@ -13,3 +13,5 @@ export type RoleWithDates = Role & {
 export type CreateRoleRequest = {
   name: string;
 };
+
+export type UpdateRoleRequest = CreateRoleRequest;

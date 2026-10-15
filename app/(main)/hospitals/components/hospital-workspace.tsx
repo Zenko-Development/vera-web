@@ -8,13 +8,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { HospitalOperations } from "../../operations/components/hospital-operations";
+import { HospitalOperations, type HospitalOperationsSection } from "../../operations/components/hospital-operations";
 import { HospitalForm } from "./hospital-form";
 import { getHospitalsErrorMessage, useHospitals } from "../hooks/use-hospitals";
 import { useAlert } from "@/features/alert/alert-store";
 import { usePermissions } from "@/features/auth/use-permissions";
 
-export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
+export function HospitalWorkspace({ hospitalId, initialSection }: { hospitalId: string; initialSection?: HospitalOperationsSection }) {
   const router = useRouter();
   const showAlert = useAlert();
   const { can } = usePermissions();
@@ -123,7 +123,7 @@ export function HospitalWorkspace({ hospitalId }: { hospitalId: string }) {
       </header>
 
       <main className="flex min-h-0 flex-1 overflow-hidden pb-3 pt-3">
-        <HospitalOperations fixedHospitalId={hospital.id} />
+        <HospitalOperations fixedHospitalId={hospital.id} initialSection={initialSection} />
       </main>
 
       {canManageHospital && <HospitalForm

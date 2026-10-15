@@ -1,5 +1,7 @@
 # Vera Backend API
 
+Операционный план больницы: [API расписания операций](api/hospital-operations.md).
+
 ## Документация по клиентам
 
 - [Веб-клиент](API_WEB_CLIENT.md) — администратор, сотрудники больниц,
@@ -128,4 +130,4 @@ JSON-ответы обработчиков обычно имеют `Content-Type
 доступен через `/emergency-calls/{id}/destination/*`; см.
 [мобильное API](API_MOBILE_AMBULANCE.md).
 
-`GET /api/v1/checklist-versions/{version_id}/questions` возвращает список вопросов версии вместе с вариантами ответов. Старый `GET /api/v1/checklist-questions/checklist-versions/{id}` получает один вопрос по ID. Маршруты публикации/архивации версии и CRUD условий правил описаны в соответствующих разделах.
+`GET /api/v1/checklist-versions/{version_id}/questions` возвращает список вопросов версии вместе с вариантами ответов. Старый `GET /api/v1/checklist-questions/checklist-versions/{id}` получает один вопрос по ID. Маршруты публикации, архивации и восстановления версии, а также CRUD условий правил описаны в соответствующих разделах.

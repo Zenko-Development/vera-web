@@ -15,8 +15,9 @@ Content-Type: application/json
 - `hospital_operating` — конкретная операционная больницы;
 - `hospital_staff` — назначение сотрудника в одну или несколько больниц.
 
-Допустимые состояния физического ресурса: `available`, `busy`, `unavailable`.
-Новый ресурс создаётся в состоянии `available`.
+Оборудование использует состояния `available`, `busy`, `unavailable` и
+создаётся в `available`. Операционные используют отдельные состояния `ready`,
+`occupied`, `maintenance` и создаются в `ready`.
 
 ## Права
 
@@ -120,9 +121,13 @@ PATCH /hospital-operating-rooms/{id}/status
 
 ```json
 {
-  "status": "busy"
+  "status": "occupied"
 }
 ```
+
+Для `PATCH /hospital-operating-rooms/{id}/status` допустимы `ready`, `occupied`
+и `maintenance`. Для `PATCH /hospital-equipment/{id}/status` допустимы
+`available`, `busy` и `unavailable`.
 
 Ручка допускает роль с `hospital_resource.manage` или
 `hospital_resource.change_status`. Во втором случае сервер дополнительно

@@ -65,6 +65,7 @@
     "routing_type": "fixed",
     "facility_type_id": "00000000-0000-0000-0000-000000000000",
     "hospital_id": "50000000-0000-4000-8000-000000000001",
+    "require_available_operating": false,
     "created_at": "2026-09-09T12:00:00Z",
     "updated_at": "2026-09-09T12:00:00Z"
   }
@@ -557,9 +558,15 @@ POST /api/v1/checklist-results/{result_id}/operating-requirements
 ```json
 {
   "routing_type": "fixed",
-  "hospital_id": "50000000-0000-4000-8000-000000000001"
+  "hospital_id": "50000000-0000-4000-8000-000000000001",
+  "require_available_operating": true
 }
 ```
+
+`require_available_operating` — необязательный boolean, по умолчанию `false`.
+Он настраивает проверку наличия готовой операционной для маршрутизации. На
+текущем этапе поле сохраняется и возвращается API; применение при подборе
+больницы будет включено отдельным обновлением routing.
 
 Альтернатива для ближайшего учреждения нужного типа:
 

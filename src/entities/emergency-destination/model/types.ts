@@ -10,11 +10,20 @@ export type EmergencyDestinationStatus =
   | "awaiting_selection"
   | "no_candidates";
 
-/**
- * The backend documentation guarantees an immutable candidate snapshot, but
- * does not yet publish the fields of that snapshot.
- */
+export type EmergencyDestinationOperatingRoom = {
+  id?: UUID;
+  label?: string;
+  operating_name?: string;
+  status: "ready" | "occupied" | "maintenance";
+  [field: string]: unknown;
+};
+
 export type EmergencyDestinationCandidate = {
+  hospital_id: UUID;
+  name: string;
+  address: string;
+  operating_available: boolean;
+  operating_rooms: EmergencyDestinationOperatingRoom[];
   [field: string]: unknown;
 };
 

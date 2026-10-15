@@ -38,7 +38,9 @@ import type { Hospital as HospitalEntity } from "@/entities/hospital/model/types
 import { userApi } from "@/entities/user/api/user.api";
 import type { User } from "@/entities/user/model/types";
 import { usePermissions } from "@/features/auth/use-permissions";
+import { useAuth } from "@/features/auth/useAuth";
 import { cn } from "@/lib/utils";
+import { HospitalDashboard } from "./hospital-dashboard";
 
 const DashboardMap = dynamic(
   () => import("../map/components/map-canvas").then((module) => module.MapCanvas),
@@ -74,6 +76,23 @@ const emptyData: DashboardData = {
 };
 
 export function Dashboard() {
+  const { user } = useAuth();
+  const { canAny } = usePermissions();
+  const isHospitalWorkspace = Boolean(user?.hospitalIds.length) && canAny([
+    "hospital_arrival.read",
+    "hospital_resource.read",
+    "hospital_resource.change_status",
+    "hospital_resource.manage",
+  ]);
+
+  if (isHospitalWorkspace && user) {
+    return <HospitalDashboard hospitalIds={user.hospitalIds} />;
+  }
+
+  return <GeneralDashboard />;
+}
+
+function GeneralDashboard() {
   const { can } = usePermissions();
   const [data, setData] = useState<DashboardData>(emptyData);
   const [loading, setLoading] = useState(true);

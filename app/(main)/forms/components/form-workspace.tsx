@@ -146,7 +146,9 @@ export function FormWorkspace({
     if (!selectedVersion || !["draft", "archived"].includes(selectedVersion.status)) return;
     setVersionAction("publish");
     try {
-      const published = await checklistVersionApi.publish(selectedVersion.id);
+      const published = selectedVersion.status === "archived"
+        ? await checklistVersionApi.unarchive(selectedVersion.id)
+        : await checklistVersionApi.publish(selectedVersion.id);
       setVersions((current) => current.map((version) => version.id === published.id ? published : version.status === "published" ? { ...version, status: "archived" } : version));
       setPublishConfirmOpen(false);
       showAlert({

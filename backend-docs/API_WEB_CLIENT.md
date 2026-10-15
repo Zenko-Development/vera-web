@@ -20,11 +20,11 @@
 
 | Экран / задача | Маршруты | Подробный контракт |
 | --- | --- | --- |
-| Пользователи, роли, назначение прав | `/user`, `/role`, `/permission`, `/link/role/…`, `/link/permission/…` | [Пользователи и права](api/auth-users-access.md), [RBAC](RBAC.md) |
+| Пользователи, роли (включая `PATCH /role/{id}` и `DELETE /role/{id}`), назначение прав | `/user`, `/role`, `/permission`, `/link/role/…`, `/link/permission/…` | [Пользователи и права](api/auth-users-access.md#роли), [RBAC](RBAC.md) |
 | Регистрация планшета, просмотр, сброс секрета, отключение и удаление | `/device/`, `/device/{device_id}`, `/device/{device_id}/auth-secret`, `PATCH /device/{device_id}/status`, `DELETE /device/{device_id}` | [Provisioning](api/device-ambulance-access.md#provisioning-устройства) |
 | Парк автомобилей | `/ambulance-vehicles/`, `/ambulance-vehicles/{id}` | [Машины](api/device-ambulance-access.md#машины-скорой) |
 | Больницы, заболевания, типы учреждений и связи | `/hospital`, `/sickness`, `/facility-type`, `/link/hospital/…`, `/link/sickness/…` | [Справочники](api/catalogs.md) |
-| Конструктор чеклистов, версии, вопросы, варианты | `/checklist`, `/checklist-versions`, `/checklist-questions`, `/checklist-options` | [Чеклисты](api/checklists.md) |
+| Конструктор чеклистов, версии (публикация, архив, восстановление), вопросы, варианты | `/checklist`, `/checklist-versions`, `/checklist-questions`, `/checklist-options` | [Чеклисты](api/checklists.md) |
 | Результаты, правила, условия, требования ресурсов и routing | `/checklist-results`, `/checklist-rules`, `/checklist-rule-conditions`, `/checklist-result-routing`, `/checklist-result-equipment-requirements`, `/checklist-result-operating-requirements` | [Правила и результаты](api/results-rules-routing.md) |
 | Зоны ответственности больниц | `/hospital-service-areas` | [Зоны обслуживания](api/hospital-routing.md) |
 | Оборудование, операционные, назначения сотрудников | `/equipment`, `/operating-types`, `/hospitals/{hospital_id}/…`, `/hospital-equipment`, `/hospital-operating-rooms`, `/hospital-staff` | [Ресурсы больниц](api/hospital-resources.md) |

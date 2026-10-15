@@ -1,4 +1,4 @@
-import type { HospitalResourceStatus } from "@/entities/hospital-resource/model/types";
+import type { HospitalEquipmentStatus } from "@/entities/hospital-resource/model/types";
 import type { Rfc3339DateTime, UUID } from "@/shared/api/types";
 
 export type HospitalEquipment = {
@@ -7,7 +7,7 @@ export type HospitalEquipment = {
   equipment_id: UUID;
   equipment_name: string;
   label: string;
-  status: HospitalResourceStatus;
+  status: HospitalEquipmentStatus;
   status_changed_at: Rfc3339DateTime;
   created_at: Rfc3339DateTime;
   updated_at: Rfc3339DateTime;

@@ -54,4 +54,12 @@ export const checklistVersionApi = {
       ),
     );
   },
+
+  unarchive(id: UUID): Promise<ChecklistVersion> {
+    return unwrapData(
+      api().post<ApiResponse<ChecklistVersion>>(
+        `/checklist-versions/${pathSegment(id)}/unarchive`,
+      ),
+    );
+  },
 };

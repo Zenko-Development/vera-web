@@ -1,5 +1,11 @@
-export type HospitalResourceStatus = "available" | "busy" | "unavailable";
+export type HospitalEquipmentStatus = "available" | "busy" | "unavailable";
+export type HospitalOperatingRoomStatus = "ready" | "occupied" | "maintenance";
+export type HospitalResourceStatus =
+  | HospitalEquipmentStatus
+  | HospitalOperatingRoomStatus;
 
-export type UpdateHospitalResourceStatusRequest = {
-  status: HospitalResourceStatus;
+export type UpdateHospitalResourceStatusRequest<
+  Status extends HospitalResourceStatus = HospitalResourceStatus,
+> = {
+  status: Status;
 };

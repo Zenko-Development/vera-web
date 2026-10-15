@@ -5,6 +5,9 @@ export const dashboardPermissions = [
   "hospital.read",
   "fleet_location.read",
   "hospital_arrival.read",
+  "hospital_resource.read",
+  "hospital_resource.change_status",
+  "hospital_resource.manage",
   "analytics.read",
 ] as const;
 
@@ -22,11 +25,19 @@ export const fleetPermissions = [
   "device.provision",
 ] as const;
 
-export const hospitalPermissions = ["hospital.read"] as const;
+export const hospitalPermissions = [
+  "hospital.read",
+  "hospital_arrival.read",
+  "hospital_resource.read",
+  "hospital_resource.change_status",
+  "hospital_resource.manage",
+] as const;
 export const mapPermissions = [
   "hospital.read",
   "fleet_location.read",
   "hospital_arrival.read",
+  "emergency_call.read",
+  "emergency_call.destination.select",
 ] as const;
 export const checklistPermissions = ["checklist.read"] as const;
 

@@ -1,4 +1,7 @@
-import type { UpdateHospitalResourceStatusRequest } from "@/entities/hospital-resource/model/types";
+import type {
+  HospitalOperatingRoomStatus,
+  UpdateHospitalResourceStatusRequest,
+} from "@/entities/hospital-resource/model/types";
 import { api } from "@/shared/api/client";
 import { pathSegment, unwrapData } from "@/shared/api/response";
 import type { ApiResponse, EmptyResponse, UUID } from "@/shared/api/types";
@@ -41,7 +44,7 @@ export const hospitalOperatingRoomApi = {
 
   updateStatus(
     id: UUID,
-    data: UpdateHospitalResourceStatusRequest,
+    data: UpdateHospitalResourceStatusRequest<HospitalOperatingRoomStatus>,
   ): Promise<HospitalOperatingRoom> {
     return unwrapData(
       api().patch<ApiResponse<HospitalOperatingRoom>>(

@@ -6,11 +6,13 @@ import {
   KeyRound,
   Library,
   LoaderCircle,
+  Pencil,
   Plus,
   RefreshCw,
   Satellite,
   Settings2,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -145,6 +147,10 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
   const [roleName, setRoleName] = useState("");
   const [roleQuery, setRoleQuery] = useState("");
   const [isRoleSaving, setIsRoleSaving] = useState(false);
+  const [roleToRename, setRoleToRename] = useState<Role | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
+  const [renamedRoleName, setRenamedRoleName] = useState("");
+  const [isRoleMutationSaving, setIsRoleMutationSaving] = useState(false);
 
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
   const [permissionName, setPermissionName] = useState("");
@@ -387,6 +393,61 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
     }
   };
 
+  const openRoleRename = (role: Role) => {
+    setRoleToRename(role);
+    setRenamedRoleName(role.name);
+  };
+
+  const handleRenameRole = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!roleToRename) return;
+    const name = renamedRoleName.trim();
+    if (!name || name === roleToRename.name) return;
+
+    setIsRoleMutationSaving(true);
+    try {
+      const updated = await roleApi.update(roleToRename.id, { name });
+      setRoles((current) => sortRoles(current.map((role) => role.id === updated.id ? updated : role)));
+      setSelectedRole((current) => current?.id === updated.id ? updated : current);
+      setRoleToRename(null);
+      showAlert({
+        title: "Роль переименована",
+        description: `Новое название: «${getRoleDisplayName(updated.name)}».`,
+        type: "success",
+      });
+    } catch (error) {
+      showAlert({ title: "Не удалось переименовать роль", description: getErrorMessage(error), type: "error" });
+    } finally {
+      setIsRoleMutationSaving(false);
+    }
+  };
+
+  const handleDeleteRole = async () => {
+    if (!roleToDelete) return;
+    setIsRoleMutationSaving(true);
+    try {
+      await roleApi.delete(roleToDelete.id);
+      const deletedId = roleToDelete.id;
+      setRoles((current) => current.filter((role) => role.id !== deletedId));
+      setRolePermissions((current) => {
+        const next = { ...current };
+        delete next[deletedId];
+        return next;
+      });
+      if (selectedRole?.id === deletedId) clearSelectedRole();
+      setRoleToDelete(null);
+      showAlert({ title: "Роль удалена", type: "success" });
+    } catch (error) {
+      showAlert({
+        title: "Не удалось удалить роль",
+        description: getErrorMessage(error),
+        type: "error",
+      });
+    } finally {
+      setIsRoleMutationSaving(false);
+    }
+  };
+
   const handleCreatePermission = async (
     event: React.FormEvent<HTMLFormElement>,
   ) => {
@@ -548,6 +609,16 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
                             <ChevronRight className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
                           </button>
                         </TableCell>
+                        <TableCell className="w-24 p-2">
+                          {role.name !== "administrator" && <div className="flex justify-end gap-1">
+                            <Button type="button" size="icon-sm" variant="ghost" aria-label={`Переименовать роль ${getRoleDisplayName(role.name)}`} onClick={() => openRoleRename(role)}>
+                              <Pencil />
+                            </Button>
+                            <Button type="button" size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label={`Удалить роль ${getRoleDisplayName(role.name)}`} onClick={() => setRoleToDelete(role)}>
+                              <Trash2 />
+                            </Button>
+                          </div>}
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -557,8 +628,7 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
           </div>
 
           <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-            Изменение названия и удаление ролей появятся после добавления
-            соответствующих серверных методов.
+            Системную роль администратора нельзя переименовать или удалить. Используемую роль сервер защитит от удаления.
           </p>
         </SettingsSection>
       )}
@@ -723,6 +793,44 @@ export function SettingsPanel({ initialTab }: { initialTab?: SettingsTab }) {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={roleToRename !== null} onOpenChange={(open) => { if (!open && !isRoleMutationSaving) setRoleToRename(null); }}>
+        <DialogContent>
+          <form onSubmit={handleRenameRole} className="contents">
+            <DialogHeader>
+              <DialogTitle>Переименовать роль</DialogTitle>
+              <DialogDescription>Назначенные права и пользователи сохранятся.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2">
+              <Label htmlFor="rename-role-name">Название роли</Label>
+              <Input id="rename-role-name" autoFocus required value={renamedRoleName} onChange={(event) => setRenamedRoleName(event.target.value)} disabled={isRoleMutationSaving} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setRoleToRename(null)} disabled={isRoleMutationSaving}>Отмена</Button>
+              <Button type="submit" disabled={isRoleMutationSaving || !renamedRoleName.trim() || renamedRoleName.trim() === roleToRename?.name}>
+                {isRoleMutationSaving && <LoaderCircle className="animate-spin" />}Сохранить
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={roleToDelete !== null} onOpenChange={(open) => { if (!open && !isRoleMutationSaving) setRoleToDelete(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Удалить роль?</DialogTitle>
+            <DialogDescription>
+              Роль «{roleToDelete ? getRoleDisplayName(roleToDelete.name) : ""}» можно удалить только после снятия назначений с пользователей и удаления связей с правами.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRoleToDelete(null)} disabled={isRoleMutationSaving}>Отмена</Button>
+            <Button type="button" variant="destructive" onClick={() => void handleDeleteRole()} disabled={isRoleMutationSaving}>
+              {isRoleMutationSaving && <LoaderCircle className="animate-spin" />}Удалить
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

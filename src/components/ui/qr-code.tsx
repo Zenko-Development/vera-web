@@ -33,13 +33,14 @@ export function QrCode({ value, label }: { value: string; label: string }) {
     const qr = new QRCodeStyling(options);
     qrRef.current = qr;
 
-    if (containerRef.current) {
-      qr.append(containerRef.current);
+    const container = containerRef.current;
+    if (container) {
+      qr.append(container);
     }
 
     return () => {
       qrRef.current = null;
-      if (containerRef.current) containerRef.current.innerHTML = "";
+      if (container) container.innerHTML = "";
     };
   }, []);
 
@@ -48,15 +49,19 @@ export function QrCode({ value, label }: { value: string; label: string }) {
     if (!qr) return;
 
     if (!value) {
-      setError(false);
       const canvas = containerRef.current?.querySelector("canvas");
       const ctx = canvas?.getContext("2d");
       if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      Promise.resolve().then(() => setError(false));
       return;
     }
 
-    setError(false);
-    Promise.resolve(qr.update({ data: value })).catch(() => setError(true));
+    Promise.resolve()
+      .then(() => {
+        setError(false);
+        return qr.update({ data: value });
+      })
+      .catch(() => setError(true));
   }, [value]);
 
   return (

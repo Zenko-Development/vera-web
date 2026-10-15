@@ -20,6 +20,7 @@ import { hospitalApi } from "@/entities/hospital/api/hospital.api";
 import type { Hospital } from "@/entities/hospital/model/types";
 import { usePermissions } from "@/features/auth/use-permissions";
 import { cn } from "@/lib/utils";
+import { DispatcherDestinations } from "./dispatcher-destinations";
 import { getArrivalCoordinates } from "./map-data";
 
 const LiveMap = dynamic(
@@ -58,6 +59,9 @@ export function LiveMapWorkspace() {
   const canSeeHospitals = can("hospital.read");
   const canSeeArrivals = can("hospital_arrival.read");
   const canSeeFleet = can("fleet_location.read");
+  const canReadDestinations = can("emergency_call.read");
+  const canSelectDestination = can("emergency_call.destination.select");
+  const canShowSidebar = canSeeArrivals || (canReadDestinations && canSeeFleet);
 
   const loadHospitals = useCallback(async () => {
     if (!canSeeHospitals) return;
@@ -166,7 +170,7 @@ export function LiveMapWorkspace() {
 
       <div className={cn(
         "grid min-h-0 flex-1 overflow-hidden rounded-xl border bg-card text-card-foreground",
-        canSeeArrivals && "lg:grid-cols-[minmax(0,1fr)_320px]",
+        canShowSidebar && "lg:grid-cols-[minmax(0,1fr)_340px]",
       )}>
         <div className="relative isolate min-h-96 overflow-hidden lg:min-h-0">
           <LiveMap
@@ -176,9 +180,9 @@ export function LiveMapWorkspace() {
           />
         </div>
 
-        {canSeeArrivals && <aside
+        {canShowSidebar && <aside
           className="min-h-0 overflow-hidden border-t lg:border-l lg:border-t-0"
-          aria-label="Ожидаемые прибытия"
+          aria-label="Оперативная информация"
         >
           <ScrollFade
             className="h-full"
@@ -186,7 +190,7 @@ export function LiveMapWorkspace() {
             fadeClassName="from-card dark:from-card"
             edgeClassName="bg-card dark:bg-card"
           >
-            <div className="mb-3 flex items-center justify-between">
+            {canSeeArrivals && <><div className="mb-3 flex items-center justify-between">
               <h2 className="font-medium">Ожидаемые прибытия</h2>
               <span className="text-xs text-muted-foreground">{arrivals.length}</span>
             </div>
@@ -242,7 +246,8 @@ export function LiveMapWorkspace() {
                   </article>
                 ))}
               </div>
-            )}
+            )}</>}
+            {canReadDestinations && canSeeFleet && <DispatcherDestinations vehicles={fleet ?? []} canSelect={canSelectDestination} />}
           </ScrollFade>
         </aside>}
       </div>

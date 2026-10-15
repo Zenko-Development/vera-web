@@ -42,4 +42,24 @@ export const emergencyDestinationApi = {
       ),
     );
   },
+
+  getForDispatcher(callId: UUID): Promise<EmergencyDestination> {
+    return unwrapData(
+      api().get<ApiResponse<EmergencyDestination>>(
+        `/dispatcher/emergency-calls/${pathSegment(callId)}/destination`,
+      ),
+    );
+  },
+
+  selectForDispatcher(
+    callId: UUID,
+    data: SelectEmergencyDestinationRequest,
+  ): Promise<EmergencyDestination> {
+    return unwrapData(
+      api().post<ApiResponse<EmergencyDestination>>(
+        `/dispatcher/emergency-calls/${pathSegment(callId)}/destination/select`,
+        data,
+      ),
+    );
+  },
 };

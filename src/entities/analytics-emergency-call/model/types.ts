@@ -1,4 +1,5 @@
 import type {
+  EmergencyDestinationOperatingRoom,
   EmergencyDestinationRoutingType,
   EmergencyDestinationStatus,
 } from "@/entities/emergency-destination/model/types";
@@ -8,6 +9,11 @@ export type AnalyticsHospitalSnapshot = {
   hospital_id: UUID;
   name: string;
   address: string;
+};
+
+export type AnalyticsHospitalCandidateSnapshot = AnalyticsHospitalSnapshot & {
+  operating_available: boolean;
+  operating_rooms: EmergencyDestinationOperatingRoom[];
 };
 
 export type AnalyticsChecklistRunResult = {
@@ -38,7 +44,7 @@ export type AnalyticsEmergencyDestination = {
   resolved_at: Rfc3339DateTime;
   selected_at: Rfc3339DateTime | null;
   /** Present only in the detailed endpoint. */
-  candidates?: AnalyticsHospitalSnapshot[];
+  candidates?: AnalyticsHospitalCandidateSnapshot[];
 };
 
 export type AnalyticsEmergencyCall = {
