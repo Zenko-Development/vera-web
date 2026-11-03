@@ -29,8 +29,21 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Production in Docker
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Create the production environment file from the template and fill in the values:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   cp .env.example .env
+   ```
+
+   `NEXT_PUBLIC_API_BASE_URL` must be an address accessible from the user's browser (for example, the public API domain). It is inserted into the client bundle during the image build, so rebuild the image after changing any `NEXT_PUBLIC_*` value.
+
+2. Build and run the image:
+
+   ```bash
+   docker build -t vera-web:latest .
+   docker run -d --name vera-web --restart unless-stopped --env-file .env -p 3000:3000 vera-web:latest
+   ```
+
+The container serves the production Next.js build on port `3000`. Put a reverse proxy (for example, Nginx) in front of it for the domain and TLS. The `.env` file is used during the build for public variables and passed at startup for server-only variables such as the geocoding settings; it is not copied into the final image.

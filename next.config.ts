@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Produces the minimal Node.js server bundle consumed by the production Docker image.
+  output: "standalone",
   webpack(config) {
     const assetRule = config.module.rules.find(
       (rule: { test?: { test?: (value: string) => boolean } }) =>

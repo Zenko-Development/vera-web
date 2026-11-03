@@ -1,0 +1,20 @@
+# Dependencies and build output are created inside Docker.
+node_modules
+.next
+
+# Repository and local tooling files are not needed in the image build context.
+.git
+.agents
+.codex
+backend-docs
+*.md
+
+# Local overrides must not be sent to the builder. Keep .env: it supplies the
+# build-time NEXT_PUBLIC_* values used by Next.js.
+.env.local
+.env.*.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
