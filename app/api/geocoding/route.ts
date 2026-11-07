@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 
 type NominatimPlace = {
   place_id: number | string;
+  osm_id?: number;
+  osm_type?: string;
   name?: string;
   display_name: string;
   lat: string;
@@ -10,6 +12,19 @@ type NominatimPlace = {
   category?: string;
   address?: NominatimAddress;
   geojson?: NominatimGeometry;
+};
+
+type PhotonFeature = {
+  properties?: Partial<{
+    osm_type: string;
+    osm_id: number | string;
+    osm_key: string;
+    osm_value: string;
+  }>;
+};
+
+type PhotonResponse = {
+  features?: PhotonFeature[];
 };
 
 type NominatimGeometry =
@@ -179,6 +194,113 @@ function scheduleNominatimRequest<T>(request: () => Promise<T>): Promise<T> {
   return queued;
 }
 
+function getNominatimOsmId(place: NominatimPlace): string | null {
+  if (place.osm_id == null) return null;
+
+  const prefix =
+    place.osm_type === "relation"
+      ? "R"
+      : place.osm_type === "way"
+        ? "W"
+        : place.osm_type === "node"
+          ? "N"
+          : null;
+
+  return prefix ? `${prefix}${place.osm_id}` : null;
+}
+
+async function searchPhotonAreaOsmIds(
+  query: string,
+  countryCodes: string,
+): Promise<string[]> {
+  const baseUrl = (
+    process.env.PHOTON_BASE_URL ?? "https://photon.komoot.io"
+  ).replace(/\/$/, "");
+  const url = new URL(`${baseUrl}/api/`);
+  url.searchParams.set("q", query);
+  url.searchParams.set("limit", "20");
+  url.searchParams.append("layer", "district");
+  url.searchParams.append("layer", "county");
+  url.searchParams.append("layer", "city");
+  url.searchParams.append("layer", "locality");
+
+  for (const countryCode of countryCodes.split(",")) {
+    const normalizedCode = countryCode.trim().toUpperCase();
+    if (normalizedCode) url.searchParams.append("countrycode", normalizedCode);
+  }
+
+  const response = await fetch(url, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(15_000),
+    next: { revalidate: 86_400 },
+  });
+  if (!response.ok) throw new Error(`Photon returned ${response.status}`);
+
+  const payload = (await response.json()) as PhotonResponse;
+  const seen = new Set<string>();
+
+  const osmIds = (payload.features ?? []).flatMap((feature) => {
+    const properties = feature.properties;
+    if (
+      !properties ||
+      properties.osm_id == null ||
+      !["R", "W", "N"].includes(properties.osm_type ?? "") ||
+      (properties.osm_key !== "boundary" ||
+        properties.osm_value !== "administrative")
+    ) {
+      return [];
+    }
+
+    const id = `${properties.osm_type}${properties.osm_id}`;
+    if (seen.has(id)) return [];
+    seen.add(id);
+    return [id];
+  });
+
+  return osmIds.slice(0, 8);
+}
+
+async function lookupNominatimAreas(
+  baseUrl: string,
+  osmIds: string[],
+): Promise<NominatimPlace[]> {
+  if (osmIds.length === 0) return [];
+
+  const url = new URL(`${baseUrl}/lookup`);
+  url.searchParams.set("osm_ids", osmIds.join(","));
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("namedetails", "1");
+  url.searchParams.set("polygon_geojson", "1");
+  url.searchParams.set(
+    "polygon_threshold",
+    process.env.NOMINATIM_POLYGON_THRESHOLD ?? "0.0005",
+  );
+
+  const places = await scheduleNominatimRequest(async () => {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "ru",
+        "User-Agent":
+          process.env.NOMINATIM_USER_AGENT ??
+          "VeraWeb/1.0 (hospital service area search)",
+      },
+      signal: AbortSignal.timeout(15_000),
+      next: { revalidate: 86_400 },
+    });
+    if (!response.ok) throw new Error(`Nominatim returned ${response.status}`);
+    return (await response.json()) as NominatimPlace[];
+  });
+
+  const order = new Map(osmIds.map((id, index) => [id, index]));
+  return places.sort(
+    (left, right) =>
+      (order.get(getNominatimOsmId(left) ?? "") ?? Number.MAX_SAFE_INTEGER) -
+      (order.get(getNominatimOsmId(right) ?? "") ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("query")?.trim() ?? "";
   const kind = request.nextUrl.searchParams.get("kind") === "area" ? "area" : "address";
@@ -208,19 +330,36 @@ export async function GET(request: NextRequest) {
   if (countryCodes) url.searchParams.set("countrycodes", countryCodes);
 
   try {
-    const places = await scheduleNominatimRequest(async () => {
-      const response = await fetch(url, {
-        headers: {
-          "Accept-Language": "ru",
-          "User-Agent":
-            process.env.NOMINATIM_USER_AGENT ??
-            "VeraWeb/1.0 (hospital address search)",
-        },
-        next: { revalidate: 86_400 },
+    let places: NominatimPlace[] = [];
+
+    if (kind === "area") {
+      try {
+        const osmIds = await searchPhotonAreaOsmIds(query, countryCodes);
+        places = (await lookupNominatimAreas(baseUrl, osmIds)).filter((place) =>
+          Boolean(getBoundary(place.geojson)),
+        );
+      } catch (error) {
+        console.warn("[Photon area search fallback]", error);
+      }
+    }
+
+    if (places.length === 0) {
+      places = await scheduleNominatimRequest(async () => {
+        const response = await fetch(url, {
+          headers: {
+            Accept: "application/json",
+            "Accept-Language": "ru",
+            "User-Agent":
+              process.env.NOMINATIM_USER_AGENT ??
+              "VeraWeb/1.0 (hospital address search)",
+          },
+          signal: AbortSignal.timeout(15_000),
+          next: { revalidate: 86_400 },
+        });
+        if (!response.ok) throw new Error(`Nominatim returned ${response.status}`);
+        return (await response.json()) as NominatimPlace[];
       });
-      if (!response.ok) throw new Error(`Nominatim returned ${response.status}`);
-      return (await response.json()) as NominatimPlace[];
-    });
+    }
 
     const data = places.flatMap((place) => {
       const latitude = Number(place.lat);
